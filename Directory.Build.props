@@ -6,5 +6,13 @@
     <Company>Claude Code Spend</Company>
     <Copyright>Local build</Copyright>
     <LangVersion>latest</LangVersion>
+    <!-- Never bake this machine's folder paths into binaries: map source paths to /src/. -->
+    <PathMap>$(MSBuildThisFileDirectory)=/src/</PathMap>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+  <!-- Release builds carry no debug info (and so no .pdb path pointing at the build machine). -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
   </PropertyGroup>
 </Project>

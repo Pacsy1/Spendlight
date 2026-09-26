@@ -9,7 +9,7 @@
 
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
-$version = ([xml](Get-Content Directory.Build.props)).Project.PropertyGroup.Version
+$version = @(([xml](Get-Content Directory.Build.props)).Project.PropertyGroup | ForEach-Object { $_.Version } | Where-Object { $_ })[0]
 
 function Step($text) { Write-Host "`n==> $text" -ForegroundColor Cyan }
 function Check($what) { if ($LASTEXITCODE -ne 0) { throw "$what failed (exit $LASTEXITCODE)" } }

@@ -1,0 +1,8 @@
+* text=auto
+
+# The Linux installer is a bash script: it must keep LF line endings on every checkout.
+*.sh text eol=lf
+
+# Binary assets
+*.ico binary
+*.png binary

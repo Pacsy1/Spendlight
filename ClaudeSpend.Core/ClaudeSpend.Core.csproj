@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Log reading, pricing and the dashboard payload, shared by the Windows and Linux apps. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ClaudeSpend</RootNamespace>
+    <IsTrimmable>true</IsTrimmable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The dashboard page, compiled in so each app is a single file. -->
+    <EmbeddedResource Include="..\dashboard.html" LogicalName="dashboard.html" />
+  </ItemGroup>
+
+</Project>

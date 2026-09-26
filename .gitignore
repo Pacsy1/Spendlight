@@ -1,0 +1,16 @@
+# Build output (rebuild with build.ps1; ship installers as GitHub Releases, not in git)
+bin/
+obj/
+build/
+dist/
+ClaudeSpend-app/
+
+# Python
+__pycache__/
+*.pyc
+
+# Editors
+.vs/
+.vscode/
+*.user
+*.suo

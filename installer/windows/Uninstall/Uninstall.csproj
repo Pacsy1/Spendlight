@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Uninstall.exe — the same program as Setup, without the app payload, so it only uninstalls. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <PlatformTarget>x64</PlatformTarget>
+    <AssemblyName>Uninstall</AssemblyName>
+    <RootNamespace>ClaudeSpendSetup</RootNamespace>
+    <AssemblyTitle>Uninstall Claude Code Spend</AssemblyTitle>
+    <ApplicationIcon>..\..\..\ClaudeSpend\app.ico</ApplicationIcon>
+    <ApplicationManifest>..\Shared\app.manifest</ApplicationManifest>
+    <DebugType>none</DebugType>
+    <NoWarn>$(NoWarn);MSB3277</NoWarn>
+    <WebView2Pkg>$(NuGetPackageRoot)microsoft.web.webview2\1.0.2903.40\</WebView2Pkg>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
+    <Reference Include="System.Web.Extensions" />
+    <Compile Include="..\Shared\*.cs" />
+    <EmbeddedResource Include="..\Shared\installer.html" LogicalName="installer.html" />
+    <EmbeddedResource Include="$(WebView2Pkg)lib\net462\Microsoft.Web.WebView2.Core.dll" LogicalName="lib/Microsoft.Web.WebView2.Core.dll" />
+    <EmbeddedResource Include="$(WebView2Pkg)lib\net462\Microsoft.Web.WebView2.WinForms.dll" LogicalName="lib/Microsoft.Web.WebView2.WinForms.dll" />
+    <EmbeddedResource Include="$(WebView2Pkg)runtimes\win-x64\native\WebView2Loader.dll" LogicalName="lib/WebView2Loader.dll" />
+  </ItemGroup>
+
+</Project>

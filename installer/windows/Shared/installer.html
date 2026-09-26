@@ -1,0 +1,742 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Claude Code Spend Setup</title>
+<style>
+:root {
+  color-scheme: light;
+  --surface: #fcfcfb;
+  --raised: #ffffff;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --line: rgba(11, 11, 11, 0.09);
+  --line-strong: rgba(11, 11, 11, 0.16);
+  --wash: rgba(11, 11, 11, 0.045);
+  --track: #efeee9;
+  --accent: #2a78d6;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(42, 120, 214, 0.10);
+  --good: #0ca30c;
+  --good-soft: rgba(12, 163, 12, 0.10);
+  --warn: #b77600;
+  --warn-soft: rgba(250, 178, 25, 0.14);
+  --danger: #d03b3b;
+  --focus: #2a78d6;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --surface: #1a1a19;
+    --raised: #222221;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --muted: #898781;
+    --line: rgba(255, 255, 255, 0.08);
+    --line-strong: rgba(255, 255, 255, 0.16);
+    --wash: rgba(255, 255, 255, 0.05);
+    --track: #2a2a28;
+    --accent: #3987e5;
+    --accent-soft: rgba(57, 135, 229, 0.16);
+    --good: #0ca30c;
+    --good-soft: rgba(12, 163, 12, 0.16);
+    --warn: #fab219;
+    --warn-soft: rgba(250, 178, 25, 0.12);
+    --danger: #e66767;
+    --focus: #3987e5;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+  }
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; overflow: hidden; }
+body {
+  background: var(--surface);
+  color: var(--ink);
+  font: 14px/1.5 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  cursor: default;
+}
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+[hidden] { display: none !important; }
+
+.app { display: grid; grid-template-columns: 290px 1fr; height: 100%; }
+
+/* ---------------- Side panel ---------------- */
+.side {
+  position: relative; overflow: hidden; color: #fff;
+  padding: 30px 28px 24px; display: flex; flex-direction: column;
+  background:
+    radial-gradient(120% 70% at 0% 0%, rgba(57, 135, 229, 0.55) 0%, rgba(57, 135, 229, 0) 60%),
+    radial-gradient(90% 60% at 100% 100%, rgba(27, 175, 122, 0.22) 0%, rgba(27, 175, 122, 0) 60%),
+    linear-gradient(165deg, #133d70 0%, #0c2446 52%, #081a33 100%);
+}
+.side::before {   /* faint dot grid */
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background-image: radial-gradient(rgba(255,255,255,0.10) 1px, transparent 1.2px);
+  background-size: 18px 18px;
+  mask-image: linear-gradient(180deg, rgba(0,0,0,.9), rgba(0,0,0,.15));
+}
+.side > * { position: relative; }
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand-mark {
+  width: 44px; height: 44px; border-radius: 12px; flex: none; display: grid; place-items: center;
+  background: linear-gradient(160deg, #4a95ec, #2a78d6 60%, #1f63b8);
+  box-shadow: 0 8px 24px -8px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.25);
+}
+.brand-name { font-size: 16px; font-weight: 650; letter-spacing: -0.01em; line-height: 1.2; }
+.brand-ver { font-size: 12px; color: rgba(255,255,255,.62); }
+
+.chart { margin: 30px -4px 0; height: 128px; }
+.chart svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.chart .cbar { transform-box: fill-box; transform-origin: bottom; transform: scaleY(0); animation: grow .9s cubic-bezier(.2,.8,.2,1) forwards; }
+.chart .gl { stroke: rgba(255,255,255,.10); stroke-width: 1; }
+.chart .trend { fill: none; stroke: rgba(255,255,255,.85); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 400; stroke-dashoffset: 400; animation: draw 1.4s .5s cubic-bezier(.4,0,.2,1) forwards; }
+.chart .dot { fill: #fff; opacity: 0; animation: pop .3s 1.8s forwards; }
+@keyframes grow { to { transform: scaleY(1); } }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes pop { to { opacity: 1; } }
+
+.steps { list-style: none; margin: 30px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.steps li { display: flex; align-items: center; gap: 12px; padding: 7px 0; font-size: 13.5px; color: rgba(255,255,255,.55); transition: color .2s; }
+.steps .n {
+  width: 24px; height: 24px; border-radius: 50%; flex: none; display: grid; place-items: center;
+  font-size: 12px; font-weight: 650; border: 1.5px solid rgba(255,255,255,.28); transition: all .25s;
+}
+.steps .n svg { display: none; }
+.steps li.active { color: #fff; font-weight: 600; }
+.steps li.active .n { background: #fff; color: #0c2446; border-color: #fff; box-shadow: 0 0 0 4px rgba(255,255,255,.14); }
+.steps li.done { color: rgba(255,255,255,.85); }
+.steps li.done .n { background: rgba(255,255,255,.16); border-color: transparent; }
+.steps li.done .n span { display: none; }
+.steps li.done .n svg { display: block; }
+.side-foot { margin-top: auto; font-size: 12px; color: rgba(255,255,255,.55); display: flex; align-items: center; gap: 8px; }
+
+/* ---------------- Main panel ---------------- */
+.main { position: relative; display: flex; flex-direction: column; min-width: 0; }
+.titlebar { height: 40px; display: flex; justify-content: flex-end; flex: none; }
+.titlebar .drag { flex: 1; }
+.wbtn { width: 46px; height: 40px; border: 0; background: transparent; display: grid; place-items: center; color: var(--ink-2); }
+.wbtn:hover { background: var(--wash); color: var(--ink); }
+.wbtn.close:hover { background: #c42b1c; color: #fff; }
+.wbtn:disabled { opacity: .35; pointer-events: none; }
+
+.pages { position: relative; flex: 1; min-height: 0; }
+.page {
+  position: absolute; inset: 0; display: flex; flex-direction: column; padding: 4px 40px 28px;
+  opacity: 0; transform: translateX(14px); pointer-events: none; visibility: hidden;
+  transition: opacity .22s ease, transform .28s cubic-bezier(.2,.8,.2,1), visibility 0s linear .28s;
+}
+/* visibility keeps hidden pages out of Tab order and screen readers once they've faded out */
+.page.show { opacity: 1; transform: none; pointer-events: auto; visibility: visible; transition-delay: 0s; }
+.page.leave { transform: translateX(-14px); }
+.body { flex: 1; min-height: 0; }
+h1 { font-size: 25px; line-height: 1.2; font-weight: 650; letter-spacing: -0.02em; margin: 6px 0 8px; }
+.lead { color: var(--ink-2); margin: 0 0 22px; font-size: 14.5px; max-width: 440px; }
+.eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+
+.features { display: flex; flex-direction: column; gap: 14px; margin-bottom: 22px; }
+.feature { display: flex; gap: 14px; align-items: flex-start; }
+.ficon { width: 34px; height: 34px; border-radius: 10px; flex: none; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
+.feature b { display: block; font-weight: 600; font-size: 14px; }
+.feature span { color: var(--muted); font-size: 13px; }
+
+.callout {
+  display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 12px;
+  background: var(--track); font-size: 13px; color: var(--ink-2);
+}
+.callout.good { background: var(--good-soft); }
+.callout.warn { background: var(--warn-soft); }
+.callout .ci { flex: none; margin-top: 1px; }
+.callout.good .ci { color: var(--good); }
+.callout.warn .ci { color: var(--warn); }
+.callout.info .ci { color: var(--accent); }
+.callout b { color: var(--ink); font-weight: 600; }
+.path { font-family: "Cascadia Mono", Consolas, monospace; font-size: 12px; word-break: break-all; color: var(--ink-2); }
+
+.actions { display: flex; align-items: center; gap: 10px; padding-top: 18px; flex: none; }
+.actions .spacer { flex: 1; }
+.btn {
+  height: 38px; padding: 0 18px; border-radius: 10px; border: 1px solid var(--line-strong);
+  background: var(--raised); font-weight: 600; font-size: 13.5px; display: inline-flex; align-items: center; gap: 8px;
+  transition: background .12s, transform .06s, box-shadow .12s;
+}
+.btn:hover { background: var(--wash); }
+.btn:active { transform: translateY(1px); }
+.btn.primary {
+  background: var(--accent); color: var(--accent-ink); border-color: transparent; min-width: 120px; justify-content: center;
+  box-shadow: 0 1px 0 rgba(255,255,255,.18) inset, 0 6px 16px -8px var(--accent);
+}
+.btn.primary:hover { filter: brightness(1.07); background: var(--accent); }
+.btn.danger { background: var(--danger); color: #fff; border-color: transparent; min-width: 120px; justify-content: center; }
+.btn.danger:hover { filter: brightness(1.07); background: var(--danger); }
+.link { border: 0; background: none; color: var(--ink-2); font-weight: 600; font-size: 13px; padding: 8px 6px; border-radius: 8px; }
+.link:hover { color: var(--ink); background: var(--wash); }
+
+/* Options */
+.field-label { font-size: 12.5px; font-weight: 600; color: var(--ink-2); margin: 4px 0 8px; }
+.picker { display: flex; gap: 8px; }
+.picker .input {
+  flex: 1; min-width: 0; height: 38px; display: flex; align-items: center; gap: 10px; padding: 0 12px;
+  border: 1px solid var(--line-strong); border-radius: 10px; background: var(--raised);
+}
+.picker .input span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; font-size: 13px; flex: 1; }
+.picker .input svg { flex: none; color: var(--muted); }
+.meta { font-size: 12px; color: var(--muted); margin: 8px 0 18px; display: flex; gap: 14px; }
+.meta .bad { color: var(--danger); font-weight: 600; }
+.toggles { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin-bottom: 18px; }
+.toggle { display: flex; align-items: center; gap: 14px; padding: 12px 14px; cursor: pointer; }
+.toggle + .toggle { border-top: 1px solid var(--line); }
+.toggle:hover { background: var(--wash); }
+.toggle .tt { flex: 1; }
+.toggle b { display: block; font-weight: 600; font-size: 13.5px; }
+.toggle small { color: var(--muted); font-size: 12px; }
+.switch { position: relative; width: 38px; height: 22px; flex: none; }
+.switch input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.switch i { position: absolute; inset: 0; border-radius: 11px; background: var(--line-strong); transition: background .18s; pointer-events: none; }
+.switch i::after {
+  content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .2s cubic-bezier(.3,.7,.3,1);
+}
+.switch input:checked + i { background: var(--accent); }
+.switch input:checked + i::after { transform: translateX(16px); }
+.switch input:focus-visible + i { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* Progress */
+.progress-head { display: flex; align-items: baseline; justify-content: space-between; margin: 8px 0 10px; }
+.pct { font-size: 34px; font-weight: 650; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.detail { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bar { height: 8px; border-radius: 4px; background: var(--track); overflow: hidden; position: relative; }
+.bar > div {
+  height: 100%; width: 0; border-radius: 4px; background: var(--accent); transition: width .25s ease; position: relative; overflow: hidden;
+}
+.bar > div::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent);
+  transform: translateX(-100%); animation: sheen 1.3s infinite;
+}
+@keyframes sheen { to { transform: translateX(100%); } }
+.tasks { list-style: none; margin: 26px 0 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.tasks li { display: flex; align-items: center; gap: 12px; font-size: 13.5px; color: var(--muted); transition: color .2s; }
+.tasks .st { width: 20px; height: 20px; flex: none; display: grid; place-items: center; }
+.tasks .st i { width: 8px; height: 8px; border-radius: 50%; background: var(--line-strong); }
+.tasks li.active { color: var(--ink); font-weight: 600; }
+.tasks li.active .st i { width: 18px; height: 18px; background: none; border: 2px solid var(--accent-soft); border-top-color: var(--accent); animation: spin .8s linear infinite; }
+.tasks li.done { color: var(--ink-2); }
+.tasks li.done .st i { display: none; }
+.tasks li .ok { display: none; color: var(--good); }
+.tasks li.done .ok { display: block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Done */
+.hero-mark { width: 64px; height: 64px; margin: 10px 0 18px; }
+.hero-mark circle { fill: var(--good-soft); stroke: var(--good); stroke-width: 2.5; stroke-dasharray: 190; stroke-dashoffset: 190; }
+.hero-mark path { fill: none; stroke: var(--good); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 40; stroke-dashoffset: 40; }
+.page.show .hero-mark circle { animation: dash .6s .05s cubic-bezier(.4,0,.2,1) forwards; }
+.page.show .hero-mark path { animation: dash .35s .5s cubic-bezier(.4,0,.2,1) forwards; }
+.hero-mark.bad circle { fill: rgba(208,59,59,.1); stroke: var(--danger); }
+.hero-mark.bad path { stroke: var(--danger); }
+@keyframes dash { to { stroke-dashoffset: 0; } }
+.summary { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 12px; }
+.summary li { display: flex; gap: 12px; align-items: center; padding: 11px 14px; font-size: 13px; color: var(--ink-2); }
+.summary li + li { border-top: 1px solid var(--line); }
+.summary li svg { flex: none; color: var(--good); }
+.summary li.off svg { color: var(--muted); }
+.summary .grow { flex: 1; min-width: 0; }
+.summary .path { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.error-box { font-size: 13px; background: var(--track); border-radius: 10px; padding: 12px 14px; color: var(--ink-2); white-space: pre-wrap; max-height: 150px; overflow: auto; user-select: text; }
+
+.badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--accent); background: var(--accent-soft); padding: 3px 9px; border-radius: 999px; margin-bottom: 4px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0s !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- ============ Side ============ -->
+  <aside class="side" data-drag>
+    <div class="brand" data-drag>
+      <div class="brand-mark" data-drag>
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" data-drag><path d="M5 17v-6M11 17V5M17 17v-4"/></svg>
+      </div>
+      <div data-drag>
+        <div class="brand-name" data-drag>Claude Code Spend</div>
+        <div class="brand-ver" id="side-version" data-drag>Setup</div>
+      </div>
+    </div>
+
+    <div class="chart" data-drag aria-hidden="true">
+      <svg viewBox="0 0 234 128" preserveAspectRatio="none" data-drag>
+        <line class="gl" x1="0" x2="234" y1="32" y2="32"/>
+        <line class="gl" x1="0" x2="234" y1="72" y2="72"/>
+        <line class="gl" x1="0" x2="234" y1="112" y2="112"/>
+        <g id="bars"></g>
+        <path class="trend" id="trend"/>
+        <circle class="dot" id="trend-dot" r="4"/>
+      </svg>
+    </div>
+
+    <ol class="steps" id="steps" data-drag></ol>
+
+    <div class="side-foot" data-drag>
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M8 1.5 13.5 3.8v4c0 3.2-2.3 5.6-5.5 6.7C4.8 13.4 2.5 11 2.5 7.8v-4z"/><path d="m5.6 8 1.7 1.7 3.2-3.4" stroke-linecap="round"/></svg>
+      <span>Local logs only · nothing is uploaded</span>
+    </div>
+  </aside>
+
+  <!-- ============ Main ============ -->
+  <main class="main">
+    <div class="titlebar">
+      <div class="drag" data-drag></div>
+      <button class="wbtn" id="btn-min" title="Minimize" aria-label="Minimize">
+        <svg width="10" height="10" viewBox="0 0 10 10"><path d="M0 5h10" stroke="currentColor" stroke-width="1"/></svg>
+      </button>
+      <button class="wbtn close" id="btn-close" title="Close" aria-label="Close">
+        <svg width="10" height="10" viewBox="0 0 10 10"><path d="M0 0l10 10M10 0 0 10" stroke="currentColor" stroke-width="1.1"/></svg>
+      </button>
+    </div>
+
+    <div class="pages">
+      <!-- Welcome -->
+      <section class="page" id="p-welcome">
+        <div class="body">
+          <div class="eyebrow" id="w-eyebrow">Welcome</div>
+          <h1 id="w-title">Install Claude Code Spend</h1>
+          <p class="lead">A desktop dashboard that shows what your Claude Code usage would cost at Anthropic API list prices, broken down by model, project and session.</p>
+          <div class="features">
+            <div class="feature">
+              <div class="ficon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 15V9M9 15V3M15 15v-4"/></svg></div>
+              <div><b>Charts that answer questions</b><span>Spend over time, where the money goes, when you work, your priciest sessions.</span></div>
+            </div>
+            <div class="feature">
+              <div class="ficon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M9 2 15 4.5v4.3c0 3.6-2.6 6.2-6 7.2-3.4-1-6-3.6-6-7.2V4.5z"/></svg></div>
+              <div><b>Private by design</b><span>Reads Claude Code's logs on this PC. Nothing leaves your machine.</span></div>
+            </div>
+            <div class="feature">
+              <div class="ficon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 9a6 6 0 1 1-1.8-4.3"/><path d="M15 3v3.2h-3.2"/></svg></div>
+              <div><b>Always current</b><span>Refreshes itself while you work, so a running session shows up live.</span></div>
+            </div>
+          </div>
+          <div class="callout" id="w-logs"></div>
+        </div>
+        <div class="actions">
+          <button class="link" id="w-customize">Customize</button>
+          <button class="link" id="w-uninstall" hidden>Uninstall</button>
+          <div class="spacer"></div>
+          <button class="btn primary" id="w-install" data-primary>Install</button>
+        </div>
+      </section>
+
+      <!-- Options -->
+      <section class="page" id="p-options">
+        <div class="body">
+          <div class="eyebrow">Options</div>
+          <h1 style="margin-bottom:18px">Installation options</h1>
+          <div class="field-label">Install location</div>
+          <div class="picker">
+            <div class="input" title="">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M1.5 4.5a1 1 0 0 1 1-1h3.2l1.5 1.6h6.3a1 1 0 0 1 1 1v6.4a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z"/></svg>
+              <span id="o-dir"></span>
+            </div>
+            <button class="btn" id="o-browse">Browse…</button>
+          </div>
+          <div class="meta"><span id="o-need"></span><span id="o-free"></span><button class="link" id="o-default" style="padding:0 4px;font-size:12px" hidden>Use default</button></div>
+          <div class="toggles">
+            <label class="toggle">
+              <div class="tt"><b>Start menu shortcut</b><small>Find it by typing "Claude Code Spend" in Start</small></div>
+              <span class="switch"><input type="checkbox" id="o-start"><i></i></span>
+            </label>
+            <label class="toggle">
+              <div class="tt"><b>Desktop shortcut</b><small>An icon on your desktop</small></div>
+              <span class="switch"><input type="checkbox" id="o-desktop"><i></i></span>
+            </label>
+          </div>
+          <div class="callout info">
+            <svg class="ci" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6.5"/><path d="M8 7.2v4M8 4.8v.1"/></svg>
+            <div>Installs for your Windows account only, so no administrator permission is needed. You can remove it any time from <b>Settings › Apps</b>.</div>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn" id="o-back">Back</button>
+          <div class="spacer"></div>
+          <button class="btn primary" id="o-install" data-primary>Install</button>
+        </div>
+      </section>
+
+      <!-- Uninstall confirm -->
+      <section class="page" id="p-confirm">
+        <div class="body">
+          <div class="eyebrow" style="color:var(--danger)">Uninstall</div>
+          <h1>Remove Claude Code Spend?</h1>
+          <p class="lead">This removes the app and its shortcuts. Your Claude Code logs are never touched.</p>
+          <div class="field-label">Installed in</div>
+          <div class="callout" style="margin-bottom:18px"><span class="path" id="c-dir"></span></div>
+          <div class="toggles">
+            <label class="toggle">
+              <div class="tt"><b>Also delete saved settings</b><small>Your chosen date range, filters and theme</small></div>
+              <span class="switch"><input type="checkbox" id="c-data"><i></i></span>
+            </label>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn" id="c-cancel">Cancel</button>
+          <div class="spacer"></div>
+          <button class="btn danger" id="c-go" data-primary>Uninstall</button>
+        </div>
+      </section>
+
+      <!-- Progress -->
+      <section class="page" id="p-progress">
+        <div class="body">
+          <div class="eyebrow" id="g-eyebrow">Installing</div>
+          <h1 id="g-title">Installing Claude Code Spend</h1>
+          <p class="lead" id="g-lead">This only takes a moment.</p>
+          <div class="progress-head"><div class="pct" id="g-pct">0%</div><div class="detail" id="g-detail">Starting…</div></div>
+          <div class="bar"><div id="g-bar"></div></div>
+          <ul class="tasks" id="g-tasks"></ul>
+        </div>
+      </section>
+
+      <!-- Done -->
+      <section class="page" id="p-done">
+        <div class="body">
+          <svg class="hero-mark" viewBox="0 0 64 64"><circle cx="32" cy="32" r="29"/><path d="m20 33 8 8 16-17"/></svg>
+          <h1 id="d-title">Claude Code Spend is ready</h1>
+          <p class="lead" id="d-lead">Open it any time from the Start menu.</p>
+          <ul class="summary" id="d-summary"></ul>
+        </div>
+        <div class="actions">
+          <button class="link" id="d-folder">Show in folder</button>
+          <div class="spacer"></div>
+          <button class="btn" id="d-close">Close</button>
+          <button class="btn primary" id="d-launch" data-primary>Open Claude Code Spend</button>
+        </div>
+      </section>
+
+      <!-- Error -->
+      <section class="page" id="p-error">
+        <div class="body">
+          <svg class="hero-mark bad" viewBox="0 0 64 64"><circle cx="32" cy="32" r="29"/><path d="M32 19v16M32 44v1"/></svg>
+          <h1>Something went wrong</h1>
+          <p class="lead">Nothing was left half-installed that the next attempt can't fix.</p>
+          <div class="error-box" id="e-msg"></div>
+        </div>
+        <div class="actions">
+          <button class="btn" id="e-close">Close</button>
+          <div class="spacer"></div>
+          <button class="btn primary" id="e-retry" data-primary>Try again</button>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const host = window.chrome && window.chrome.webview;
+const send = m => { if (host) host.postMessage(m); };
+
+const ICON_CHECK = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2.5 6.2 2.4 2.3 4.6-5"/></svg>';
+const ICON_OK = '<svg class="ok" width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 9.5 3.2 3L14 5.5"/></svg>';
+
+const S = {
+  mode: "install", page: null, busy: false, state: null, last: "welcome",
+  opts: { dir: "", desktop: true, startMenu: true, removeData: false },
+};
+
+const STEPS = {
+  install: [["welcome", "Welcome"], ["options", "Options"], ["progress", "Install"], ["done", "Finish"]],
+  uninstall: [["confirm", "Confirm"], ["progress", "Remove"], ["done", "Finish"]],
+};
+const TASKS = {
+  install: [["prepare", "Getting ready"], ["copy", "Copying the app"], ["shortcuts", "Creating shortcuts"], ["register", "Registering with Windows"]],
+  uninstall: [["close", "Closing the app"], ["shortcuts", "Removing shortcuts"], ["files", "Removing app files"], ["register", "Unregistering from Windows"], ["data", "Deleting saved settings"]],
+};
+
+const fmtBytes = b => b < 0 ? "unknown" : b >= 1073741824 ? (b / 1073741824).toFixed(1) + " GB" : (b / 1048576).toFixed(1) + " MB";
+
+/* ---------- Side decoration: a small animated chart ---------- */
+(function drawChart() {
+  const vals = [18, 26, 22, 38, 30, 46, 40, 58, 52, 70, 64, 84];
+  const colors = ["#6fa9ee", "#ffffff", "#f08a5d", "#3ec79a"];
+  const g = $("bars"), W = 234, base = 112, bw = 11, gap = (W - vals.length * bw) / (vals.length - 1);
+  const pts = [];
+  vals.forEach((v, i) => {
+    const x = i * (bw + gap), h = v;
+    // Two stacked segments per bar with a 2px gap, in the dashboard's palette.
+    const split = Math.round(h * (0.55 + 0.25 * Math.sin(i)));
+    const seg = (y, hh, c, op) => {
+      const r = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      r.setAttribute("x", x); r.setAttribute("y", y); r.setAttribute("width", bw); r.setAttribute("height", hh);
+      r.setAttribute("rx", 2.5); r.setAttribute("fill", c); r.setAttribute("opacity", op);
+      r.setAttribute("class", "cbar"); r.style.animationDelay = (i * 55) + "ms";
+      g.appendChild(r);
+    };
+    seg(base - split, split, colors[0], 0.95);
+    seg(base - h, h - split - 2, colors[i % 3 === 2 ? 2 : i % 3 === 1 ? 3 : 1], i % 3 === 0 ? 0.55 : 0.9);
+    pts.push([x + bw / 2, base - h - 12]);
+  });
+  const d = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + "," + p[1].toFixed(1)).join("");
+  $("trend").setAttribute("d", d);
+  const last = pts[pts.length - 1];
+  $("trend-dot").setAttribute("cx", last[0]); $("trend-dot").setAttribute("cy", last[1]);
+})();
+
+/* ---------- Navigation ---------- */
+function renderSteps(page) {
+  const steps = STEPS[S.mode];
+  let idx = steps.findIndex(s => s[0] === page);
+  if (page === "error") idx = steps.findIndex(s => s[0] === "progress");
+  const ol = $("steps");
+  ol.replaceChildren();
+  steps.forEach(([id, label], i) => {
+    const li = document.createElement("li");
+    li.className = i < idx || (page === "done" && i === idx) ? "done" : i === idx ? "active" : "";
+    const n = document.createElement("span");
+    n.className = "n";
+    n.innerHTML = ICON_CHECK;
+    const num = document.createElement("span");
+    num.textContent = String(i + 1);
+    n.prepend(num);
+    li.append(n, document.createTextNode(label));
+    ol.appendChild(li);
+  });
+}
+
+function go(page) {
+  if (S.page === page) return;
+  const prev = S.page && $("p-" + S.page);
+  if (prev) { prev.classList.remove("show"); prev.classList.add("leave"); setTimeout(() => prev.classList.remove("leave"), 300); }
+  const next = $("p-" + page);
+  next.classList.add("show");
+  if (page !== "error" && page !== "progress") S.last = page;
+  S.page = page;
+  renderSteps(page);
+  const busy = page === "progress";
+  $("btn-close").disabled = busy;
+}
+
+/* ---------- Welcome ---------- */
+function renderWelcome() {
+  const st = S.state;
+  const inst = st.installed;
+  $("side-version").textContent = "Version " + st.version;
+  if (inst) {
+    const same = inst.version === st.version;
+    $("w-eyebrow").textContent = same ? "Already installed" : "Update available";
+    $("w-title").textContent = same ? "Reinstall Claude Code Spend" : `Update to version ${st.version}`;
+    $("w-install").textContent = same ? "Reinstall" : "Update";
+    $("w-uninstall").hidden = false;
+  }
+  const box = $("w-logs");
+  box.replaceChildren();
+  const icon = document.createElement("span");
+  icon.className = "ci";
+  const text = document.createElement("div");
+  if (st.logs.found) {
+    box.className = "callout good";
+    icon.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="m5.2 8.2 1.9 1.8 3.7-4"/></svg>';
+    const b = document.createElement("b");
+    b.textContent = `Found ${st.logs.sessions} Claude Code session log${st.logs.sessions === 1 ? "" : "s"} across ${st.logs.projects} project${st.logs.projects === 1 ? "" : "s"}.`;
+    const p = document.createElement("div");
+    p.className = "path"; p.textContent = st.logs.dir;
+    text.append(b, document.createTextNode(" Your dashboard will be ready the moment it opens."), p);
+  } else {
+    box.className = "callout warn";
+    icon.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 1.8 15 14H1z" stroke-linejoin="round"/><path d="M8 6.5v3.5M8 12v.1"/></svg>';
+    const b = document.createElement("b");
+    b.textContent = "No Claude Code logs yet.";
+    text.append(b, document.createTextNode(" That's fine — the dashboard fills in as soon as you use Claude Code."));
+  }
+  box.append(icon, text);
+}
+
+/* ---------- Options ---------- */
+function renderOptions() {
+  const span = $("o-dir");
+  span.textContent = "‎" + S.opts.dir;   // LRM keeps the path readable in the rtl-ellipsis trick
+  span.parentElement.title = S.opts.dir;
+  $("o-start").checked = S.opts.startMenu;
+  $("o-desktop").checked = S.opts.desktop;
+  $("o-need").textContent = "Needs " + fmtBytes(S.state.requiredBytes);
+  const free = $("o-free");
+  const f = S.opts.freeBytes ?? S.state.freeBytes;
+  free.textContent = f >= 0 ? fmtBytes(f) + " available" : "";
+  free.className = f >= 0 && f < S.state.requiredBytes ? "bad" : "";
+  $("o-default").hidden = S.opts.dir === S.state.defaults.dir;
+}
+
+/* ---------- Progress ---------- */
+function startJob(kind) {
+  const tasks = TASKS[kind].filter(t => kind !== "uninstall" || t[0] !== "data" || S.opts.removeData);
+  const ul = $("g-tasks");
+  ul.replaceChildren();
+  for (const [id, label] of tasks) {
+    const li = document.createElement("li");
+    li.dataset.id = id;
+    const st = document.createElement("span");
+    st.className = "st";
+    st.innerHTML = "<i></i>" + ICON_OK;
+    li.append(st, document.createTextNode(label));
+    ul.appendChild(li);
+  }
+  const un = kind === "uninstall";
+  $("g-eyebrow").textContent = un ? "Uninstalling" : S.state.installed ? "Updating" : "Installing";
+  $("g-title").textContent = un ? "Removing Claude Code Spend" : "Installing Claude Code Spend";
+  $("g-lead").textContent = un ? "Cleaning up — this only takes a moment." : "This only takes a moment.";
+  setProgress(0, tasks[0][0], "Starting…");
+  go("progress");
+}
+function setProgress(pct, step, detail) {
+  $("g-pct").textContent = pct + "%";
+  $("g-bar").style.width = pct + "%";
+  if (detail) $("g-detail").textContent = detail;
+  const items = [...$("g-tasks").children];
+  const idx = items.findIndex(li => li.dataset.id === step);
+  items.forEach((li, i) => {
+    li.className = step === "done" || (idx >= 0 && i < idx) ? "done" : i === idx ? "active" : "";
+  });
+}
+
+/* ---------- Done ---------- */
+function renderDone() {
+  const ul = $("d-summary");
+  ul.replaceChildren();
+  const row = (on, label, path) => {
+    const li = document.createElement("li");
+    if (!on) li.className = "off";
+    li.innerHTML = on
+      ? '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3.5 8.5 3 2.8 6-6.3"/></svg>'
+      : '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 8h8"/></svg>';
+    const grow = document.createElement("div");
+    grow.className = "grow";
+    grow.append(document.createTextNode(label));
+    if (path) { const p = document.createElement("span"); p.className = "path"; p.textContent = path; grow.appendChild(p); }
+    li.appendChild(grow);
+    ul.appendChild(li);
+  };
+  if (S.mode === "uninstall") {
+    $("d-title").textContent = "Claude Code Spend was removed";
+    $("d-lead").textContent = "Thanks for trying it. Your Claude Code logs are untouched.";
+    row(true, "App and uninstaller removed", S.state.installed ? S.state.installed.dir : "");
+    row(true, "Shortcuts removed");
+    row(S.opts.removeData, S.opts.removeData ? "Saved settings deleted" : "Saved settings kept");
+    $("d-launch").hidden = true; $("d-folder").hidden = true;
+    $("d-close").classList.add("primary");
+  } else {
+    $("d-title").textContent = S.state.installed ? "Claude Code Spend is up to date" : "Claude Code Spend is ready";
+    $("d-lead").textContent = S.opts.startMenu ? "Open it any time from the Start menu." : "Open it any time from the install folder.";
+    row(true, "Installed to", S.opts.dir);
+    row(S.opts.startMenu, S.opts.startMenu ? "Start menu shortcut" : "No Start menu shortcut");
+    row(S.opts.desktop, S.opts.desktop ? "Desktop shortcut" : "No desktop shortcut");
+  }
+}
+
+/* ---------- Wiring ---------- */
+$("btn-close").onclick = () => send({ type: "close" });
+$("btn-min").onclick = () => send({ type: "minimize" });
+$("w-install").onclick = () => { install(); };
+$("w-customize").onclick = () => { renderOptions(); go("options"); };
+$("w-uninstall").onclick = () => { S.mode = "uninstall"; renderConfirm(); go("confirm"); };
+$("o-back").onclick = () => go("welcome");
+$("o-install").onclick = () => install();
+$("o-browse").onclick = () => send({ type: "browse", dir: S.opts.dir });
+$("o-default").onclick = () => { S.opts.dir = S.state.defaults.dir; S.opts.freeBytes = S.state.freeBytes; renderOptions(); };
+$("o-start").onchange = e => { S.opts.startMenu = e.target.checked; };
+$("o-desktop").onchange = e => { S.opts.desktop = e.target.checked; };
+$("c-data").onchange = e => { S.opts.removeData = e.target.checked; };
+$("c-cancel").onclick = () => {
+  if (S.state.mode === "uninstall") send({ type: "close" });
+  else { S.mode = "install"; go("welcome"); }
+};
+$("c-go").onclick = () => { startJob("uninstall"); send({ type: "uninstall", removeData: S.opts.removeData }); };
+$("d-close").onclick = () => send({ type: "close" });
+$("d-launch").onclick = () => send({ type: "launch" });
+$("d-folder").onclick = () => send({ type: "openFolder" });
+$("e-close").onclick = () => send({ type: "close" });
+$("e-retry").onclick = () => go(S.last);
+
+function install() {
+  startJob("install");
+  send({ type: "install", dir: S.opts.dir, desktop: S.opts.desktop, startMenu: S.opts.startMenu });
+}
+function renderConfirm() {
+  const inst = S.state.installed;
+  $("c-data").checked = S.opts.removeData;
+  $("c-dir").textContent = inst ? inst.dir : "";
+  if (!inst) {
+    // Run with nothing installed: say so plainly instead of offering to remove nothing.
+    const page = $("p-confirm");
+    page.querySelector("h1").textContent = "Claude Code Spend isn't installed";
+    page.querySelector(".lead").textContent = "There's nothing to remove on this PC for your account.";
+    page.querySelector(".field-label").hidden = true;
+    $("c-dir").parentElement.hidden = true;
+    page.querySelector(".toggles").hidden = true;
+    $("c-go").hidden = true;
+    $("c-cancel").textContent = "Close";
+    $("c-cancel").classList.add("primary");
+  }
+}
+
+// Borderless window: drag from the side panel and the title strip.
+document.addEventListener("mousedown", e => {
+  if (e.button !== 0) return;
+  const t = e.target;
+  if (t.closest("button, input, label, a, .error-box")) return;
+  if (t.closest("[data-drag]")) { e.preventDefault(); send({ type: "drag" }); }
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter" && S.page !== "progress" && !e.target.closest("button")) {
+    const p = $("p-" + S.page).querySelector("[data-primary]:not([hidden])");
+    if (p) { e.preventDefault(); p.click(); }
+  }
+  if (e.key === "Escape" && S.page !== "progress") send({ type: "close" });
+});
+document.addEventListener("dragstart", e => e.preventDefault());
+
+if (host) host.addEventListener("message", e => {
+  const m = e.data;
+  switch (m.type) {
+    case "state":
+      S.state = m;
+      S.mode = m.mode;
+      S.opts.dir = m.defaults.dir;
+      S.opts.desktop = m.defaults.desktop;
+      S.opts.startMenu = m.defaults.startMenu;
+      renderWelcome();
+      renderOptions();
+      renderConfirm();
+      if (m.page) {                                   // design preview: --page <name>
+        if (m.page === "progress") { startJob(S.mode); setProgress(47, S.mode === "uninstall" ? "files" : "copy", "Copying 29.8 of 63.2 MB"); }
+        else if (m.page === "done") { renderDone(); go("done"); }
+        else if (m.page === "error") { $("e-msg").textContent = "Setup can't write to that folder without administrator rights. Pick a folder inside your user profile, such as the default location."; go("error"); }
+        else go(m.page);
+      } else go(S.mode === "uninstall" ? "confirm" : "welcome");
+      break;
+    case "browsed":
+      S.opts.dir = m.dir;
+      S.opts.freeBytes = m.freeBytes;
+      renderOptions();
+      break;
+    case "progress":
+      setProgress(m.pct, m.step, m.detail);
+      break;
+    case "done":
+      setProgress(100, "done", S.mode === "uninstall" ? "Removed" : "Installed");
+      setTimeout(() => { renderDone(); go("done"); }, 450);
+      break;
+    case "error":
+      $("e-msg").textContent = m.message;
+      go("error");
+      break;
+  }
+});
+send({ type: "init" });
+</script>
+</body>
+</html>

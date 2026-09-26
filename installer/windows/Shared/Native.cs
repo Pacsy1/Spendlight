@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 
-namespace ClaudeSpendSetup
+namespace SpendlightSetup
 {
     /// <summary>Resources compiled into the setup exe: the app, the uninstaller, WebView2's DLLs, the UI.</summary>
     internal static class Embedded
@@ -38,13 +38,13 @@ namespace ClaudeSpendSetup
         }
 
         /// <summary>Setup's scratch folder in %TEMP% (WebView2 DLLs and browser profile).</summary>
-        public static string TempRoot => Path.Combine(Path.GetTempPath(), "ClaudeSpendSetup");
+        public static string TempRoot => Path.Combine(Path.GetTempPath(), "SpendlightSetup");
 
         private static readonly string[] Libs =
             { "Microsoft.Web.WebView2.Core.dll", "Microsoft.Web.WebView2.WinForms.dll", "WebView2Loader.dll" };
         private static string _libDir;
 
-        /// <summary>Writes the WebView2 DLLs to %TEMP%\ClaudeSpendSetup\lib-&lt;version&gt; once; returns that folder.</summary>
+        /// <summary>Writes the WebView2 DLLs to %TEMP%\SpendlightSetup\lib-&lt;version&gt; once; returns that folder.</summary>
         public static string ExtractLibs()
         {
             if (_libDir != null) return _libDir;
@@ -128,6 +128,29 @@ namespace ClaudeSpendSetup
             void SetRelativePath([MarshalAs(UnmanagedType.LPWStr)] string pszPathRel, int dwReserved);
             void Resolve(IntPtr hwnd, int fFlags);
             void SetPath([MarshalAs(UnmanagedType.LPWStr)] string pszFile);
+        }
+
+        /// <summary>The file a .lnk points to, or null if there's no such shortcut or it can't be read.</summary>
+        public static string GetTarget(string lnkPath)
+        {
+            if (!File.Exists(lnkPath)) return null;
+            var link = (IShellLinkW)new CShellLink();
+            try
+            {
+                ((IPersistFile)link).Load(lnkPath, 0);
+                var sb = new StringBuilder(1024);
+                link.GetPath(sb, sb.Capacity, IntPtr.Zero, 0x4 /* SLGP_RAWPATH */);
+                return sb.ToString();
+            }
+            catch { return null; }
+            finally { Marshal.ReleaseComObject(link); }
+        }
+
+        /// <summary>True if the shortcut exists and points at a file inside <paramref name="dir"/>.</summary>
+        public static bool PointsInto(string lnkPath, string dir)
+        {
+            var target = GetTarget(lnkPath);
+            return target != null && InstallerCore.SamePath(Path.GetDirectoryName(target), dir);
         }
 
         public static void Create(string lnkPath, string target, string workingDir, string description)

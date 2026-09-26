@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
-namespace ClaudeSpend;
+namespace Spendlight;
 
 /// <summary>
 /// Serves the dashboard and its data on http://127.0.0.1:&lt;port&gt;/ — loopback only.
@@ -11,7 +11,7 @@ namespace ClaudeSpend;
 /// </summary>
 public sealed class DashboardServer : IDisposable
 {
-    public const string PingSignature = "claude-spend";
+    public const string PingSignature = "spendlight";
 
     private readonly DataStore _store;
     private readonly HttpListener _listener = new();
@@ -47,7 +47,7 @@ public sealed class DashboardServer : IDisposable
         return port;
     }
 
-    /// <summary>True when a Claude Code Spend server already answers on this port.</summary>
+    /// <summary>True when a Spendlight server already answers on this port.</summary>
     public static async Task<bool> IsRunningOn(int port)
     {
         try

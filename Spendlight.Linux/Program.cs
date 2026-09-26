@@ -1,7 +1,7 @@
 using System.Diagnostics;
-using ClaudeSpend;
+using Spendlight;
 
-// claude-spend — Claude Code Spend for Linux.
+// spendlight — Spendlight for Linux.
 //
 // Serves the dashboard on 127.0.0.1 and opens it as an app window in a Chromium-family browser
 // (Chromium, Chrome, Brave, Edge, Vivaldi), or in your default browser otherwise. A second
@@ -25,13 +25,13 @@ for (int i = 0; i < args.Length; i++)
         case "--port" or "-p": port = int.Parse(Next()); break;
         case "--export": export = Next(); break;
         case "--server" or "--no-browser": openWindow = false; break;
-        case "--version" or "-v": Console.WriteLine($"claude-spend {Dashboard.Version}"); return 0;
+        case "--version" or "-v": Console.WriteLine($"spendlight {Dashboard.Version}"); return 0;
         case "--help" or "-h":
             Console.WriteLine($"""
-                Claude Code Spend {Dashboard.Version}
+                Spendlight {Dashboard.Version}
                 See what your Claude Code usage would cost at Anthropic API list prices.
 
-                Usage: claude-spend [options]
+                Usage: spendlight [options]
                   --dir <path>      Claude Code logs folder (default: {LogReader.DefaultRoot()})
                   --port <n>        Port to serve on (default: {PreferredPort}; falls back to a free one)
                   --server          Don't open a window; serve until Ctrl+C
@@ -39,11 +39,11 @@ for (int i = 0; i < args.Length; i++)
                   --version         Print the version
 
                 Environment:
-                  CLAUDE_SPEND_BROWSER   Browser command to open the dashboard with
+                  SPENDLIGHT_BROWSER   Browser command to open the dashboard with
                   CLAUDE_CONFIG_DIR      Claude Code config dir (logs are in <dir>/projects)
 
                 Copyright (C) 2026 Pacsy1. Free software under the GNU GPL v3 or later;
-                there is NO WARRANTY. Source: https://github.com/Pacsy1/claude-code-spend
+                there is NO WARRANTY. Source: https://github.com/Pacsy1/spendlight
                 """);
             return 0;
         default:
@@ -69,7 +69,7 @@ if (!Directory.Exists(root))
 if (openWindow && await DashboardServer.IsRunningOn(port))
 {
     var url = $"http://127.0.0.1:{port}/";
-    Console.WriteLine($"Claude Code Spend is already running at {url}");
+    Console.WriteLine($"Spendlight is already running at {url}");
     Launcher.Open(url, out _);
     return 0;
 }
@@ -80,7 +80,7 @@ Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); };
 AppDomain.CurrentDomain.ProcessExit += (_, _) => cts.Cancel();
 
 var serve = server.RunAsync(cts.Token);
-Console.WriteLine($"Claude Code Spend {Dashboard.Version} — {server.Url}");
+Console.WriteLine($"Spendlight {Dashboard.Version} — {server.Url}");
 Console.WriteLine($"Reading logs from {root}");
 
 if (!openWindow)
@@ -125,7 +125,7 @@ static void Notify(string message)
 {
     Console.Error.WriteLine(message);
     if (OperatingSystem.IsLinux() && !Console.IsOutputRedirected) return;   // a terminal already shows it
-    Launcher.TryRun("notify-send", "--app-name=Claude Code Spend", "--icon=claude-spend", "Claude Code Spend", message);
+    Launcher.TryRun("notify-send", "--app-name=Spendlight", "--icon=spendlight", "Spendlight", message);
 }
 
 static class Launcher
@@ -146,7 +146,7 @@ static class Launcher
             return null;
         }
 
-        var custom = Environment.GetEnvironmentVariable("CLAUDE_SPEND_BROWSER");
+        var custom = Environment.GetEnvironmentVariable("SPENDLIGHT_BROWSER");
         if (!string.IsNullOrWhiteSpace(custom))
         {
             how = custom;
@@ -159,7 +159,7 @@ static class Launcher
             if (path == null) continue;
             var args = new List<string>
             {
-                "--app=" + url, "--class=claude-spend", "--name=claude-spend",
+                "--app=" + url, "--class=spendlight", "--name=spendlight",
                 "--window-size=1400,950", "--no-first-run", "--no-default-browser-check",
             };
             // Snap-packaged browsers can't write to hidden folders like ~/.local, so they share the normal profile.
@@ -228,6 +228,6 @@ static class Launcher
         var baseDir = string.IsNullOrEmpty(xdg)
             ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "share")
             : xdg;
-        return Path.Combine(baseDir, "claude-spend");
+        return Path.Combine(baseDir, "spendlight");
     }
 }

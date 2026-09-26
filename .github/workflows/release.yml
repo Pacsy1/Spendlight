@@ -2,13 +2,13 @@
 # release, with a build provenance attestation for every file. Anyone can then check that a
 # download was built from this repository by this workflow (and not changed afterwards):
 #
-#   gh attestation verify ClaudeSpend-Setup-<version>.exe --repo Pacsy1/claude-code-spend
+#   gh attestation verify Spendlight-Setup-<version>.exe --repo Pacsy1/spendlight
 #
 # To release: bump <Version> in Directory.Build.props, commit, then
 #   git tag v<version> && git push origin v<version>
 #
 # Signing: when a certificate is set up (see README › Code signing), add it as repository
-# secrets and pass it to build.ps1 through the CLAUDE_SPEND_SIGN_* environment variables.
+# secrets and pass it to build.ps1 through the SPENDLIGHT_SIGN_* environment variables.
 
 name: Release
 
@@ -45,14 +45,14 @@ jobs:
         shell: pwsh
         run: |
           $v = "${{ github.ref_name }}".TrimStart('v')
-          if (-not (Test-Path "dist/ClaudeSpend-Setup-$v.exe")) { throw "Tag ${{ github.ref_name }} doesn't match <Version> in Directory.Build.props" }
+          if (-not (Test-Path "dist/Spendlight-Setup-$v.exe")) { throw "Tag ${{ github.ref_name }} doesn't match <Version> in Directory.Build.props" }
 
       - name: Attest build provenance
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: |
-            dist/ClaudeSpend-Setup-*.exe
-            dist/ClaudeSpend-Linux-*.run
+            dist/Spendlight-Setup-*.exe
+            dist/Spendlight-Linux-*.run
 
       - uses: actions/upload-artifact@v4
         with:
@@ -75,4 +75,4 @@ jobs:
           ``````
           SHA-256 checksums are in ``SHA256SUMS-$v.txt``.
           "@
-          gh release create "${{ github.ref_name }}" dist/* --title "Claude Code Spend $v" --notes $notes --verify-tag
+          gh release create "${{ github.ref_name }}" dist/* --title "Spendlight $v" --notes $notes --verify-tag

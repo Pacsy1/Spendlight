@@ -1,12 +1,10 @@
 # Spendlight
 
-**A spend tracker for Claude Code.** See how many tokens you've used in [Claude Code](https://claude.com/claude-code) and what that usage would cost at Anthropic API list prices, broken down by model, project, session and time.
+See how many tokens you've used in [Claude Code](https://claude.com/claude-code) and what that usage would cost at Anthropic API list prices, broken down by model, project, session and time.
 
-Everything runs locally. Spendlight reads Claude Code's own session logs on your machine (`~/.claude/projects`) and never sends them anywhere.
+Everything runs locally. It reads Claude Code's own session logs on your machine (`~/.claude/projects`) and never sends them anywhere.
 
 > On a Pro or Max plan you aren't billed per token. The figures show what the same usage would cost on the API.
-
-*Formerly known as Claude Code Spend.*
 
 ## What you get
 
@@ -52,12 +50,12 @@ This writes `dist/Spendlight-Setup-<version>.exe` and `dist/Spendlight-Linux-<ve
 
 ```
 dashboard.html              The dashboard UI, shared by every host (hand-drawn SVG charts, no dependencies)
-spendlight.py               Python: log reader, pricing, command-line summary
-spendlight_ui.py            Python: local server for the dashboard
+spendlight.py              Python: log reader, pricing, command-line summary
+spendlight_ui.py           Python: local server for the dashboard
 
-Spendlight.Core/            C#: log reader, pricing, data payload, loopback server (shared)
-Spendlight/                 Windows app: WinForms + WebView2 window
-Spendlight.Linux/           Linux app: serves on 127.0.0.1, opens an app-style browser window
+Spendlight.Core/           C#: log reader, pricing, data payload, loopback server (shared)
+Spendlight/                Windows app: WinForms + WebView2 window
+Spendlight.Linux/          Linux app: serves on 127.0.0.1, opens an app-style browser window
 
 installer/windows/          Setup + Uninstall (.NET Framework 4.8 + WebView2, HTML UI)
 installer/linux/            Self-extracting .run installer (bash; terminal UI or zenity dialogs) + packager
@@ -69,7 +67,7 @@ build.ps1                   Builds everything into dist/
 Releases are built by [GitHub Actions](.github/workflows/release.yml) from the tagged source. Each installer carries a signed [build provenance attestation](https://docs.github.com/actions/security-for-github-actions/using-artifact-attestations), which proves it was built from this repository by that workflow and hasn't been changed since:
 
 ```bash
-gh attestation verify ClaudeSpend-Setup-<version>.exe --repo Pacsy1/claude-code-spend
+gh attestation verify Spendlight-Setup-<version>.exe --repo Pacsy1/spendlight
 ```
 
 Each release also lists SHA-256 checksums in `SHA256SUMS-<version>.txt`.
@@ -79,14 +77,14 @@ Each release also lists SHA-256 checksums in `SHA256SUMS-<version>.txt`.
 Nothing is hidden, and all of it is in [`installer/`](installer/):
 
 **Windows setup** (runs as you, never as administrator):
-- **Files:** copies `ClaudeSpend.exe`, `Uninstall.exe` and `LICENSE.txt` into `%LOCALAPPDATA%\Programs\Claude Code Spend` (or the folder you choose).
+- **Files:** copies `Spendlight.exe`, `Uninstall.exe` and `LICENSE.txt` into `%LOCALAPPDATA%\Programs\Spendlight` (or the folder you choose).
 - **Shortcuts:** adds Start menu and desktop shortcuts, if you ticked them.
-- **Registry:** adds one entry under `HKCU\…\Uninstall\ClaudeCodeSpend`, so it appears in Settings › Apps.
-- **Temp files:** unpacks the WebView2 DLLs it needs to draw its window into `%TEMP%\ClaudeSpendSetup`.
+- **Registry:** adds one entry under `HKCU\…\Uninstall\Spendlight`, so it appears in Settings › Apps.
+- **Temp files:** unpacks the WebView2 DLLs it needs to draw its window into `%TEMP%\SpendlightSetup`.
 - **Updates:** if an older copy is running, asks it to close (like clicking its X) and never force-kills anything.
 - **Uninstalling:** copies itself to `%TEMP%` and runs from there, the same approach as Inno Setup and NSIS. That's how the installed `Uninstall.exe` can be removed. It deletes only the files above, by exact name, and deletes the folder only if it's then empty.
 
-**Linux installer:** puts the app in `~/.local/share/claude-spend`, links `claude-spend` and `claude-spend-uninstall` into `~/.local/bin`, and adds a menu entry and icon. It verifies its own SHA-256 checksum before unpacking. Use `--extract DIR` to inspect the contents without installing.
+**Linux installer:** puts the app in `~/.local/share/spendlight`, links `spendlight` and `spendlight-uninstall` into `~/.local/bin`, and adds a menu entry and icon. It verifies its own SHA-256 checksum before unpacking. Use `--extract DIR` to inspect the contents without installing.
 
 **The app** only reads files under `~/.claude/projects`. Its only network use is its own server on `127.0.0.1`.
 
@@ -96,15 +94,15 @@ Nothing is hidden, and all of it is in [`installer/`](installer/):
 
 | Variable | Meaning |
 |---|---|
-| `CLAUDE_SPEND_SIGN_THUMBPRINT` | Thumbprint of a code-signing certificate in your Windows certificate store (works with hardware tokens and cloud-token certificates that show up there) |
-| `CLAUDE_SPEND_SIGN_PFX` / `CLAUDE_SPEND_SIGN_PFX_PASSWORD` | Or: a `.pfx` file and its password |
-| `CLAUDE_SPEND_TIMESTAMP_URL` | RFC 3161 timestamp server (default `http://timestamp.digicert.com`) |
+| `SPENDLIGHT_SIGN_THUMBPRINT` | Thumbprint of a code-signing certificate in your Windows certificate store (works with hardware tokens and cloud-token certificates that show up there) |
+| `SPENDLIGHT_SIGN_PFX` / `SPENDLIGHT_SIGN_PFX_PASSWORD` | Or: a `.pfx` file and its password |
+| `SPENDLIGHT_TIMESTAMP_URL` | RFC 3161 timestamp server (default `http://timestamp.digicert.com`) |
 
 ## License
 
 Copyright © 2026 Pacsy1
 
-Claude Code Spend is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+Spendlight is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with this program (see [LICENSE](LICENSE)). If not, see <https://www.gnu.org/licenses/>.
 
@@ -113,7 +111,3 @@ This program is distributed in the hope that it will be useful, but WITHOUT ANY 
 - **Logs stay local:** they're read from disk on every refresh and never stored or uploaded.
 - **Local server:** the Linux app and the Python dashboard listen on `127.0.0.1` only and reject requests whose `Host` header isn't loopback.
 - **Windows app:** serves the page from memory with no network listener.
-
-## Disclaimer
-
-Spendlight is an independent project. It is not affiliated with, endorsed by, or sponsored by Anthropic. Claude and Claude Code are trademarks of Anthropic.

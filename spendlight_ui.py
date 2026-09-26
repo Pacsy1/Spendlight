@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
-claude_cost_ui.py - Local web dashboard for Claude Code spend.
+spendlight_ui.py - Local web dashboard for Spendlight.
 
-Reads the same logs as claude_cost.py and serves an interactive dashboard
+Reads the same logs as spendlight.py and serves an interactive dashboard
 (dashboard.html) on http://127.0.0.1:8765. Everything stays on your machine:
 the server only binds to localhost and only reads ~/.claude/projects.
 
 Usage:
-    python claude_cost_ui.py                # opens the dashboard in your browser
-    python claude_cost_ui.py --port 9000 --no-open
-    python claude_cost_ui.py --dir D:\\other\\.claude\\projects
+    python spendlight_ui.py                # opens the dashboard in your browser
+    python spendlight_ui.py --port 9000 --no-open
+    python spendlight_ui.py --dir D:\\other\\.claude\\projects
 """
 
 import argparse
@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from claude_cost import (
+from spendlight import (
     FAST_PRICES, PRICES, WEB_SEARCH_PER_REQUEST,
     cost_breakdown, default_root, lookup_price, rates_for, read_logs,
 )
@@ -118,7 +118,7 @@ class DataStore:
             "dir": str(self.root),
             "parseSeconds": round(elapsed, 3),
             "files": len(self.cache),
-            "priceSource": "claude_cost.py",
+            "priceSource": "spendlight.py",
             "fields": ["t", "model", "project", "session",
                        "input", "cacheWrite", "cacheRead", "output", "webSearch",
                        "costInput", "costCacheWrite", "costCacheRead", "costOutput", "costWeb",
@@ -163,7 +163,7 @@ def make_handler(store):
                 try:
                     body = DASHBOARD.read_bytes()
                 except OSError:
-                    return self._send(500, b"dashboard.html not found next to claude_cost_ui.py", "text/plain")
+                    return self._send(500, b"dashboard.html not found next to spendlight_ui.py", "text/plain")
                 return self._send(200, body, "text/html; charset=utf-8")
             if path == "/api/data":
                 try:
@@ -173,7 +173,7 @@ def make_handler(store):
                     return self._send(500, body, "application/json")
                 return self._send(200, body, "application/json")
             if path == "/api/ping":
-                return self._send(200, b'{"app":"claude-spend"}', "application/json")
+                return self._send(200, b'{"app":"spendlight"}', "application/json")
             if path == "/favicon.ico":
                 return self._send(204, b"", "image/x-icon")
             return self._send(404, b"Not found", "text/plain")
@@ -183,7 +183,7 @@ def make_handler(store):
 
 def main():
     root = default_root()
-    ap = argparse.ArgumentParser(description="Local dashboard for Claude Code spend.")
+    ap = argparse.ArgumentParser(description="Local dashboard for Spendlight.")
     ap.add_argument("--dir", type=Path, default=root, help=f"projects log dir (default: {root})")
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--no-open", action="store_true", help="don't open a browser tab")
@@ -194,7 +194,7 @@ def main():
 
     server = ThreadingHTTPServer(("127.0.0.1", args.port), make_handler(DataStore(args.dir)))
     url = f"http://127.0.0.1:{args.port}/"
-    print(f"Claude Code spend dashboard: {url}   (Ctrl+C to stop)")
+    print(f"Spendlight dashboard: {url}   (Ctrl+C to stop)")
     if not args.no_open:
         threading.Timer(0.6, lambda: webbrowser.open(url)).start()
     try:

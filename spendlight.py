@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-claude_cost.py - Tally the tokens Claude Code has spent (from its local
+spendlight.py - Tally the tokens Claude Code has spent (from its local
 session logs) and estimate what that would cost at Anthropic API list prices.
 
-For a visual dashboard, run  claude_cost_ui.py  instead.
+For a visual dashboard, run  spendlight_ui.py  instead.
 
 Where the data comes from
 -------------------------
@@ -34,10 +34,10 @@ NOTE: If you're on a Pro/Max subscription you don't pay per token - this is
 what the same usage *would* cost on the API.
 
 Usage:
-    python claude_cost.py                 # summary by model
-    python claude_cost.py --by project    # or: day, session, month
-    python claude_cost.py --since 2026-09-01 --until 2026-09-30
-    python claude_cost.py --dir D:\\other\\.claude\\projects
+    python spendlight.py                 # summary by model
+    python spendlight.py --by project    # or: day, session, month
+    python spendlight.py --since 2026-09-01 --until 2026-09-30
+    python spendlight.py --dir D:\\other\\.claude\\projects
 """
 
 import argparse
@@ -281,7 +281,7 @@ def default_root():
 
 def main():
     root = default_root()
-    ap = argparse.ArgumentParser(description="Estimate Claude Code spend from local logs.")
+    ap = argparse.ArgumentParser(description="Estimate Spendlight from local logs.")
     ap.add_argument("--dir", type=Path, default=root, help=f"projects log dir (default: {root})")
     ap.add_argument("--by", choices=["model", "project", "day", "month", "session"], default="model")
     ap.add_argument("--since", help="YYYY-MM-DD (inclusive)")

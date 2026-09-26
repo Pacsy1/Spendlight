@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 
-namespace ClaudeSpend;
+namespace Spendlight;
 
 public record struct Usage(long Input, long Cache5m, long Cache1h, long CacheRead, long Output, long WebSearch, bool Fast)
 {

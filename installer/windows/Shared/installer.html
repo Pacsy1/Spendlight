@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Claude Code Spend Setup</title>
+<title>Spendlight Setup</title>
 <style>
 :root {
   color-scheme: light;
@@ -250,6 +250,8 @@ h1 { font-size: 25px; line-height: 1.2; font-weight: 650; letter-spacing: -0.02e
 .summary li + li { border-top: 1px solid var(--line); }
 .summary li svg { flex: none; color: var(--good); }
 .summary li.off svg { color: var(--muted); }
+.summary li.warn svg { color: var(--warn); }
+.summary li.warn .path { white-space: normal; font-family: inherit; }
 .summary .grow { flex: 1; min-width: 0; }
 .summary .path { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .error-box { font-size: 13px; background: var(--track); border-radius: 10px; padding: 12px 14px; color: var(--ink-2); white-space: pre-wrap; max-height: 150px; overflow: auto; user-select: text; }
@@ -267,7 +269,7 @@ h1 { font-size: 25px; line-height: 1.2; font-weight: 650; letter-spacing: -0.02e
         <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" data-drag><path d="M5 17v-6M11 17V5M17 17v-4"/></svg>
       </div>
       <div data-drag>
-        <div class="brand-name" data-drag>Claude Code Spend</div>
+        <div class="brand-name" data-drag>Spendlight</div>
         <div class="brand-ver" id="side-version" data-drag>Setup</div>
       </div>
     </div>
@@ -312,7 +314,7 @@ h1 { font-size: 25px; line-height: 1.2; font-weight: 650; letter-spacing: -0.02e
       <section class="page" id="p-welcome">
         <div class="body">
           <div class="eyebrow" id="w-eyebrow">Welcome</div>
-          <h1 id="w-title">Install Claude Code Spend</h1>
+          <h1 id="w-title">Install Spendlight</h1>
           <p class="lead">A desktop dashboard that shows what your Claude Code usage would cost at Anthropic API list prices, broken down by model, project and session.</p>
           <div class="features">
             <div class="feature">
@@ -354,7 +356,7 @@ h1 { font-size: 25px; line-height: 1.2; font-weight: 650; letter-spacing: -0.02e
           <div class="meta"><span id="o-need"></span><span id="o-free"></span><button class="link" id="o-default" style="padding:0 4px;font-size:12px" hidden>Use default</button></div>
           <div class="toggles">
             <label class="toggle">
-              <div class="tt"><b>Start menu shortcut</b><small>Find it by typing "Claude Code Spend" in Start</small></div>
+              <div class="tt"><b>Start menu shortcut</b><small>Find it by typing "Spendlight" in Start</small></div>
               <span class="switch"><input type="checkbox" id="o-start"><i></i></span>
             </label>
             <label class="toggle">
@@ -378,7 +380,7 @@ h1 { font-size: 25px; line-height: 1.2; font-weight: 650; letter-spacing: -0.02e
       <section class="page" id="p-confirm">
         <div class="body">
           <div class="eyebrow" style="color:var(--danger)">Uninstall</div>
-          <h1>Remove Claude Code Spend?</h1>
+          <h1>Remove Spendlight?</h1>
           <p class="lead">This removes the app and its shortcuts. Your Claude Code logs are never touched.</p>
           <div class="field-label">Installed in</div>
           <div class="callout" style="margin-bottom:18px"><span class="path" id="c-dir"></span></div>
@@ -400,7 +402,7 @@ h1 { font-size: 25px; line-height: 1.2; font-weight: 650; letter-spacing: -0.02e
       <section class="page" id="p-progress">
         <div class="body">
           <div class="eyebrow" id="g-eyebrow">Installing</div>
-          <h1 id="g-title">Installing Claude Code Spend</h1>
+          <h1 id="g-title">Installing Spendlight</h1>
           <p class="lead" id="g-lead">This only takes a moment.</p>
           <div class="progress-head"><div class="pct" id="g-pct">0%</div><div class="detail" id="g-detail">Starting…</div></div>
           <div class="bar"><div id="g-bar"></div></div>
@@ -412,7 +414,7 @@ h1 { font-size: 25px; line-height: 1.2; font-weight: 650; letter-spacing: -0.02e
       <section class="page" id="p-done">
         <div class="body">
           <svg class="hero-mark" viewBox="0 0 64 64"><circle cx="32" cy="32" r="29"/><path d="m20 33 8 8 16-17"/></svg>
-          <h1 id="d-title">Claude Code Spend is ready</h1>
+          <h1 id="d-title">Spendlight is ready</h1>
           <p class="lead" id="d-lead">Open it any time from the Start menu.</p>
           <ul class="summary" id="d-summary"></ul>
         </div>
@@ -420,7 +422,7 @@ h1 { font-size: 25px; line-height: 1.2; font-weight: 650; letter-spacing: -0.02e
           <button class="link" id="d-folder">Show in folder</button>
           <div class="spacer"></div>
           <button class="btn" id="d-close">Close</button>
-          <button class="btn primary" id="d-launch" data-primary>Open Claude Code Spend</button>
+          <button class="btn primary" id="d-launch" data-primary>Open Spendlight</button>
         </div>
       </section>
 
@@ -536,7 +538,7 @@ function renderWelcome() {
   if (inst) {
     const same = inst.version === st.version;
     $("w-eyebrow").textContent = same ? "Already installed" : "Update available";
-    $("w-title").textContent = same ? "Reinstall Claude Code Spend" : `Update to version ${st.version}`;
+    $("w-title").textContent = same ? "Reinstall Spendlight" : `Update to version ${st.version}`;
     $("w-install").textContent = same ? "Reinstall" : "Update";
     $("w-uninstall").hidden = false;
   }
@@ -594,7 +596,7 @@ function startJob(kind) {
   }
   const un = kind === "uninstall";
   $("g-eyebrow").textContent = un ? "Uninstalling" : S.state.installed ? "Updating" : "Installing";
-  $("g-title").textContent = un ? "Removing Claude Code Spend" : "Installing Claude Code Spend";
+  $("g-title").textContent = un ? "Removing Spendlight" : "Installing Spendlight";
   $("g-lead").textContent = un ? "Cleaning up — this only takes a moment." : "This only takes a moment.";
   setProgress(0, tasks[0][0], "Starting…");
   go("progress");
@@ -611,15 +613,23 @@ function setProgress(pct, step, detail) {
 }
 
 /* ---------- Done ---------- */
+const ROW_ICONS = {
+  on: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3.5 8.5 3 2.8 6-6.3"/></svg>',
+  off: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 8h8"/></svg>',
+  warn: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 1.8 15 14H1z" stroke-linejoin="round"/><path d="M8 6.5v3.5M8 12v.1"/></svg>',
+};
+// What the install actually did (from Setup), rather than what was asked for.
+let lastResult = null;
+
 function renderDone() {
   const ul = $("d-summary");
   ul.replaceChildren();
-  const row = (on, label, path) => {
+  // state: true (done) | false (not chosen) | "warn" (didn't work)
+  const row = (state, label, path) => {
     const li = document.createElement("li");
-    if (!on) li.className = "off";
-    li.innerHTML = on
-      ? '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3.5 8.5 3 2.8 6-6.3"/></svg>'
-      : '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 8h8"/></svg>';
+    if (state === false) li.className = "off";
+    if (state === "warn") li.className = "warn";
+    li.innerHTML = state === "warn" ? ROW_ICONS.warn : state ? ROW_ICONS.on : ROW_ICONS.off;
     const grow = document.createElement("div");
     grow.className = "grow";
     grow.append(document.createTextNode(label));
@@ -628,7 +638,7 @@ function renderDone() {
     ul.appendChild(li);
   };
   if (S.mode === "uninstall") {
-    $("d-title").textContent = "Claude Code Spend was removed";
+    $("d-title").textContent = "Spendlight was removed";
     $("d-lead").textContent = "Thanks for trying it. Your Claude Code logs are untouched.";
     row(true, "App and uninstaller removed", S.state.installed ? S.state.installed.dir : "");
     row(true, "Shortcuts removed");
@@ -636,11 +646,18 @@ function renderDone() {
     $("d-launch").hidden = true; $("d-folder").hidden = true;
     $("d-close").classList.add("primary");
   } else {
-    $("d-title").textContent = S.state.installed ? "Claude Code Spend is up to date" : "Claude Code Spend is ready";
-    $("d-lead").textContent = S.opts.startMenu ? "Open it any time from the Start menu." : "Open it any time from the install folder.";
+    const r = lastResult || { startMenu: S.opts.startMenu ? "created" : "skipped", desktop: S.opts.desktop ? "created" : "skipped", warnings: [] };
+    const shortcut = (status, name) =>
+      status === "created" ? row(true, `${name} shortcut`)
+      : status === "failed" ? row("warn", `Couldn't create the ${name === "Desktop" ? "desktop" : name} shortcut`, ((r.warnings || []).find(w => w.toLowerCase().startsWith(name.toLowerCase() + ":")) || "").replace(/^[^:]+:\s*/, ""))
+      : row(false, `No ${name === "Desktop" ? "desktop" : name} shortcut`);
+    $("d-title").textContent = S.state.installed ? "Spendlight is up to date" : "Spendlight is ready";
+    $("d-lead").textContent = r.startMenu === "created" ? "Open it any time from the Start menu."
+      : r.desktop === "created" ? "Open it any time from your desktop." : "Open it any time from the install folder.";
     row(true, "Installed to", S.opts.dir);
-    row(S.opts.startMenu, S.opts.startMenu ? "Start menu shortcut" : "No Start menu shortcut");
-    row(S.opts.desktop, S.opts.desktop ? "Desktop shortcut" : "No desktop shortcut");
+    shortcut(r.startMenu, "Start menu");
+    shortcut(r.desktop, "Desktop");
+    if (r.removedLegacy) row(true, "Replaced the old Claude Code Spend");
   }
 }
 
@@ -680,7 +697,7 @@ function renderConfirm() {
   if (!inst) {
     // Run with nothing installed: say so plainly instead of offering to remove nothing.
     const page = $("p-confirm");
-    page.querySelector("h1").textContent = "Claude Code Spend isn't installed";
+    page.querySelector("h1").textContent = "Spendlight isn't installed";
     page.querySelector(".lead").textContent = "There's nothing to remove on this PC for your account.";
     page.querySelector(".field-label").hidden = true;
     $("c-dir").parentElement.hidden = true;
@@ -735,11 +752,12 @@ if (host) host.addEventListener("message", e => {
       setProgress(m.pct, m.step, m.detail);
       break;
     case "done":
+      lastResult = m.startMenu ? m : null;
       setProgress(100, "done", S.mode === "uninstall" ? "Removed" : "Installed");
       setTimeout(() => { renderDone(); go("done"); }, 450);
       break;
     case "error":
-      $("e-msg").textContent = m.message;
+      $("e-msg").textContent = m.message + (m.log ? `\n\nDetails are in ${m.log}` : "");
       go("error");
       break;
   }

@@ -3,7 +3,7 @@ bin/
 obj/
 build/
 dist/
-ClaudeSpend-app/
+Spendlight-app/
 
 # Python
 __pycache__/
@@ -14,3 +14,4 @@ __pycache__/
 .vscode/
 *.user
 *.suo
+ClaudeSpend-app/

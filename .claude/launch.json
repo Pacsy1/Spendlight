@@ -4,7 +4,7 @@
     {
       "name": "spend-dashboard",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["claude_cost_ui.py", "--no-open"],
+      "runtimeArgs": ["spendlight_ui.py", "--no-open"],
       "port": 8765
     }
   ]

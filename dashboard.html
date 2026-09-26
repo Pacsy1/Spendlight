@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Claude Code Spend</title>
+<title>Spendlight</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232a78d6'/%3E%3Cpath d='M9 22V14M16 22V9M23 22V17' stroke='white' stroke-width='3.2' stroke-linecap='round'/%3E%3C/svg%3E">
 <style>
 /* ---------- Tokens ---------- */
@@ -407,7 +407,7 @@ footer { margin-top: 28px; font-size: 12px; color: var(--muted); display: flex; 
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M4 14V9M9 14V4M14 14v-3.5"/></svg>
       </div>
       <div style="min-width:0">
-        <h1>Claude Code spend</h1>
+        <h1>Spendlight</h1>
         <p id="subtitle">Estimated from your local session logs at Anthropic API list prices</p>
       </div>
     </div>
@@ -556,7 +556,7 @@ footer { margin-top: 28px; font-size: 12px; color: var(--muted); display: flex; 
     <div class="card-head">
       <div>
         <h2 class="card-title">Rates used</h2>
-        <p class="card-sub">USD per million tokens · edit <code>PRICES</code> in <span id="price-source">claude_cost.py</span> to change</p>
+        <p class="card-sub">USD per million tokens · edit <code>PRICES</code> in <span id="price-source">spendlight.py</span> to change</p>
       </div>
       <div class="tools"><button class="btn-link" id="rates-toggle">Show all models</button></div>
     </div>
@@ -565,7 +565,7 @@ footer { margin-top: 28px; font-size: 12px; color: var(--muted); display: flex; 
 
   <footer>
     <span>On a Pro or Max plan you aren't billed per token — these figures are what the same usage would cost on the API.</span>
-    <span><span id="foot-meta"></span> · Free software (GPL-3.0) · <a class="foot-link" href="https://github.com/Pacsy1/claude-code-spend" target="_blank" rel="noopener">Source code</a></span>
+    <span><span id="foot-meta"></span> · Free software (GPL-3.0) · <a class="foot-link" href="https://github.com/Pacsy1/spendlight" target="_blank" rel="noopener">Source code</a></span>
   </footer>
 </div>
 
@@ -721,7 +721,7 @@ function anchorOf(elm) { const r = elm.getBoundingClientRect(); return [r.left +
 /* =========================================================================
    State
    ========================================================================= */
-const saved = store.get("ccs.state", {});
+const saved = store.get("spendlight.state", {});
 const S = {
   data: null,
   range: saved.range || { preset: "30d" },
@@ -759,10 +759,10 @@ const S = {
   pick("theme", ["system", "light", "dark"]);
 })();
 function persist() {
-  store.set("ccs.state", { range: S.range, gran: S.gran, metric: S.metric, breakdown: S.breakdown, mode: S.mode, theme: S.theme });
+  store.set("spendlight.state", { range: S.range, gran: S.gran, metric: S.metric, breakdown: S.breakdown, mode: S.mode, theme: S.theme });
 }
 
-/* Record layout from the server (see claude_cost_ui.py), plus two derived columns. */
+/* Record layout from the server (see spendlight_ui.py), plus two derived columns. */
 const R = { t: 0, m: 1, p: 2, s: 3, in: 4, cw: 5, cr: 6, out: 7, web: 8,
             cIn: 9, cCw: 10, cCr: 11, cOut: 12, cWeb: 13, cNo: 14, fast: 15, cost: 16, tok: 17 };
 
@@ -2154,10 +2154,10 @@ async function load() {
       bh.appendChild(banner("warn", b => {
         b.append(document.createTextNode("No price known for "));
         unpriced.forEach(([m, n], i) => { if (i) b.append(document.createTextNode(", ")); b.append(h("code", null, m)); b.append(document.createTextNode(` (${n} calls)`)); });
-        b.append(document.createTextNode(" — counted as $0. Add it to "), h("code", null, "PRICES"), document.createTextNode(` in ${d.priceSource || "claude_cost.py"}.`));
+        b.append(document.createTextNode(" — counted as $0. Add it to "), h("code", null, "PRICES"), document.createTextNode(` in ${d.priceSource || "spendlight.py"}.`));
       }));
     }
-    $("#price-source").textContent = d.priceSource || "claude_cost.py";
+    $("#price-source").textContent = d.priceSource || "spendlight.py";
     $("#subtitle").textContent = `Estimated from ${d.dir} at Anthropic API list prices`;
     $("#subtitle").title = d.dir;
     $("#foot-meta").textContent = `${int.format(d.records.length)} API calls · ${d.files} log files · parsed in ${d.parseSeconds}s`;
@@ -2168,7 +2168,7 @@ async function load() {
     const bh = $("#banners");
     bh.replaceChildren(banner("err", b => {
       b.append(document.createTextNode("Couldn't read usage data: " + err.message + ". "));
-      if (location.protocol === "file:") b.append(document.createTextNode("Open this page through "), h("code", null, "python claude_cost_ui.py"), document.createTextNode(" rather than as a file."));
+      if (location.protocol === "file:") b.append(document.createTextNode("Open this page through "), h("code", null, "python spendlight_ui.py"), document.createTextNode(" rather than as a file."));
     }));
   } finally {
     loading = false;

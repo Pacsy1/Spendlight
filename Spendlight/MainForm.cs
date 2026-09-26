@@ -3,7 +3,7 @@ using System.Text.Json;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 
-namespace ClaudeSpend;
+namespace Spendlight;
 
 /// <summary>
 /// A window hosting the dashboard in WebView2. The page and its data are served from memory
@@ -11,7 +11,8 @@ namespace ClaudeSpend;
 /// </summary>
 public sealed class MainForm : Form
 {
-    private const string Origin = "https://claude-spend.app";
+    // A reserved .example domain (RFC 2606): never a real site. Every request to it is answered in-process.
+    private const string Origin = "https://spendlight.example";
 
     private readonly DataStore _store;
     private readonly WebView2 _web = new() { Dock = DockStyle.Fill };
@@ -19,7 +20,7 @@ public sealed class MainForm : Form
     public MainForm(DataStore store)
     {
         _store = store;
-        Text = "Claude Code Spend";
+        Text = "Spendlight";
         MinimumSize = new Size(420, 480);
         StartPosition = FormStartPosition.CenterScreen;
         var area = Screen.PrimaryScreen?.WorkingArea ?? new Rectangle(0, 0, 1600, 1000);
@@ -38,7 +39,7 @@ public sealed class MainForm : Form
     {
         try
         {
-            var dataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ClaudeSpend");
+            var dataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Spendlight");
             var env = await CoreWebView2Environment.CreateAsync(null, dataDir);
             await _web.EnsureCoreWebView2Async(env);
         }

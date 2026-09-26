@@ -1,10 +1,10 @@
 using System.Diagnostics;
 using System.Text.Json;
 
-namespace ClaudeSpend;
+namespace Spendlight;
 
 /// <summary>
-/// Builds the /api/data JSON the dashboard consumes — the same shape claude_cost_ui.py serves.
+/// Builds the /api/data JSON the dashboard consumes — the same shape spendlight_ui.py serves.
 /// Records are compact arrays; see "fields" in the payload for the column order.
 /// </summary>
 public sealed class DataStore

@@ -7,16 +7,16 @@
     <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <AssemblyName>ClaudeSpend</AssemblyName>
-    <AssemblyTitle>Claude Code Spend</AssemblyTitle>
-    <RootNamespace>ClaudeSpend</RootNamespace>
+    <AssemblyName>Spendlight</AssemblyName>
+    <AssemblyTitle>Spendlight</AssemblyTitle>
+    <RootNamespace>Spendlight</RootNamespace>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <ApplicationIcon>app.ico</ApplicationIcon>
     <!-- WebView2 ships a WPF control too; this WinForms app never loads it, so its WindowsBase clash is harmless. -->
     <NoWarn>$(NoWarn);MSB3277</NoWarn>
   </PropertyGroup>
 
-  <!-- `dotnet publish -c Release` produces one self-contained ClaudeSpend.exe: no .NET install needed. -->
+  <!-- `dotnet publish -c Release` produces one self-contained Spendlight.exe: no .NET install needed. -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
@@ -30,7 +30,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
-    <ProjectReference Include="..\ClaudeSpend.Core\ClaudeSpend.Core.csproj" />
+    <ProjectReference Include="..\Spendlight.Core\Spendlight.Core.csproj" />
   </ItemGroup>
 
 </Project>

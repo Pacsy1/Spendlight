@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    ClaudeSpend-Setup.exe — the Windows installer.
+    Spendlight-Setup.exe — the Windows installer.
     Targets .NET Framework 4.8 (built into Windows 10 and 11) so it runs with no prerequisites.
     Everything it needs is compiled in: the app, the uninstaller, WebView2's DLLs and the UI.
     Build the payload first (see build.ps1), then:  dotnet build installer\windows\Setup -c Release
@@ -11,10 +11,10 @@
     <TargetFramework>net48</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
     <PlatformTarget>x64</PlatformTarget>
-    <AssemblyName>ClaudeSpend-Setup</AssemblyName>
-    <RootNamespace>ClaudeSpendSetup</RootNamespace>
-    <AssemblyTitle>Claude Code Spend Setup</AssemblyTitle>
-    <ApplicationIcon>..\..\..\ClaudeSpend\app.ico</ApplicationIcon>
+    <AssemblyName>Spendlight-Setup</AssemblyName>
+    <RootNamespace>SpendlightSetup</RootNamespace>
+    <AssemblyTitle>Spendlight Setup</AssemblyTitle>
+    <ApplicationIcon>..\..\..\Spendlight\app.ico</ApplicationIcon>
     <ApplicationManifest>..\Shared\app.manifest</ApplicationManifest>
     <DebugType>none</DebugType>
     <!-- WebView2 ships a WPF control too; never loaded here. -->
@@ -28,7 +28,7 @@
     <Reference Include="System.Web.Extensions" />
     <Compile Include="..\Shared\*.cs" />
     <EmbeddedResource Include="..\Shared\installer.html" LogicalName="installer.html" />
-    <EmbeddedResource Include="$(PayloadDir)win-x64\ClaudeSpend.exe" LogicalName="payload/ClaudeSpend.exe" />
+    <EmbeddedResource Include="$(PayloadDir)win-x64\Spendlight.exe" LogicalName="payload/Spendlight.exe" />
     <EmbeddedResource Include="$(PayloadDir)uninstaller\Uninstall.exe" LogicalName="payload/Uninstall.exe" />
     <EmbeddedResource Include="..\..\..\LICENSE" LogicalName="payload/LICENSE.txt" />
     <EmbeddedResource Include="$(WebView2Pkg)lib\net462\Microsoft.Web.WebView2.Core.dll" LogicalName="lib/Microsoft.Web.WebView2.Core.dll" />
@@ -37,7 +37,7 @@
   </ItemGroup>
 
   <Target Name="CheckPayload" BeforeTargets="BeforeBuild">
-    <Error Condition="!Exists('$(PayloadDir)win-x64\ClaudeSpend.exe') Or !Exists('$(PayloadDir)uninstaller\Uninstall.exe')"
+    <Error Condition="!Exists('$(PayloadDir)win-x64\Spendlight.exe') Or !Exists('$(PayloadDir)uninstaller\Uninstall.exe')"
            Text="Payload missing in $(PayloadDir). Run build.ps1 from the repository root." />
   </Target>
 

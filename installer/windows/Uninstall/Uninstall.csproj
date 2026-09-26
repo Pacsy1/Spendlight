@@ -7,9 +7,9 @@
     <UseWindowsForms>true</UseWindowsForms>
     <PlatformTarget>x64</PlatformTarget>
     <AssemblyName>Uninstall</AssemblyName>
-    <RootNamespace>ClaudeSpendSetup</RootNamespace>
-    <AssemblyTitle>Uninstall Claude Code Spend</AssemblyTitle>
-    <ApplicationIcon>..\..\..\ClaudeSpend\app.ico</ApplicationIcon>
+    <RootNamespace>SpendlightSetup</RootNamespace>
+    <AssemblyTitle>Uninstall Spendlight</AssemblyTitle>
+    <ApplicationIcon>..\..\..\Spendlight\app.ico</ApplicationIcon>
     <ApplicationManifest>..\Shared\app.manifest</ApplicationManifest>
     <DebugType>none</DebugType>
     <NoWarn>$(NoWarn);MSB3277</NoWarn>

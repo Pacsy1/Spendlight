@@ -1,9 +1,9 @@
-namespace ClaudeSpend;
+namespace Spendlight;
 
 internal static class Program
 {
     /// <summary>
-    /// ClaudeSpend.exe [--dir &lt;path to .claude\projects&gt;] [--export &lt;file.json&gt;]
+    /// Spendlight.exe [--dir &lt;path to .claude\projects&gt;] [--export &lt;file.json&gt;]
     /// --export writes the dashboard's data (every API call with its tokens and cost) and exits.
     /// </summary>
     [STAThread]
@@ -29,7 +29,7 @@ internal static class Program
         {
             MessageBox.Show(
                 $"Couldn't find Claude Code's logs at:\n{root}\n\nRun Claude Code at least once, or start the app with --dir <path>.",
-                "Claude Code Spend", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                "Spendlight", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
 

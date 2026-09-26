@@ -1,14 +1,14 @@
 # Builds both installers into dist\:
-#   ClaudeSpend-Setup-<version>.exe     Windows (x64) — per-user install, no admin needed
-#   ClaudeSpend-Linux-<version>.run     Linux (x86-64 and ARM64) — self-extracting installer
+#   Spendlight-Setup-<version>.exe     Windows (x64) — per-user install, no admin needed
+#   Spendlight-Linux-<version>.run     Linux (x86-64 and ARM64) — self-extracting installer
 #
 # Needs: .NET 8 SDK (downloads NuGet packages on first run) and Python 3 (for the Linux package).
 # Version: edit <Version> in Directory.Build.props.
 #
 # Code signing (optional): set ONE of
-#   CLAUDE_SPEND_SIGN_THUMBPRINT               certificate in your Windows certificate store
-#   CLAUDE_SPEND_SIGN_PFX (+ _PFX_PASSWORD)    certificate file
-# and optionally CLAUDE_SPEND_TIMESTAMP_URL (default http://timestamp.digicert.com).
+#   SPENDLIGHT_SIGN_THUMBPRINT               certificate in your Windows certificate store
+#   SPENDLIGHT_SIGN_PFX (+ _PFX_PASSWORD)    certificate file
+# and optionally SPENDLIGHT_TIMESTAMP_URL (default http://timestamp.digicert.com).
 # The app and uninstaller are signed before they're packed into the setup, then the setup itself.
 #
 #   powershell -ExecutionPolicy Bypass -File build.ps1
@@ -24,14 +24,14 @@ function Check($what) { if ($LASTEXITCODE -ne 0) { throw "$what failed (exit $LA
 
 # ---- signing certificate (optional) ----
 $cert = $null
-$timestamp = if ($env:CLAUDE_SPEND_TIMESTAMP_URL) { $env:CLAUDE_SPEND_TIMESTAMP_URL } else { 'http://timestamp.digicert.com' }
-if ($env:CLAUDE_SPEND_SIGN_THUMBPRINT) {
-    $tp = ($env:CLAUDE_SPEND_SIGN_THUMBPRINT -replace '[^0-9A-Fa-f]', '').ToUpperInvariant()
+$timestamp = if ($env:SPENDLIGHT_TIMESTAMP_URL) { $env:SPENDLIGHT_TIMESTAMP_URL } else { 'http://timestamp.digicert.com' }
+if ($env:SPENDLIGHT_SIGN_THUMBPRINT) {
+    $tp = ($env:SPENDLIGHT_SIGN_THUMBPRINT -replace '[^0-9A-Fa-f]', '').ToUpperInvariant()
     $cert = Get-ChildItem Cert:\CurrentUser\My, Cert:\LocalMachine\My -CodeSigningCert | Where-Object Thumbprint -eq $tp | Select-Object -First 1
     if (-not $cert) { throw "No code-signing certificate with thumbprint $tp in CurrentUser\My or LocalMachine\My." }
-} elseif ($env:CLAUDE_SPEND_SIGN_PFX) {
+} elseif ($env:SPENDLIGHT_SIGN_PFX) {
     $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2(
-        (Resolve-Path $env:CLAUDE_SPEND_SIGN_PFX).Path, $env:CLAUDE_SPEND_SIGN_PFX_PASSWORD,
+        (Resolve-Path $env:SPENDLIGHT_SIGN_PFX).Path, $env:SPENDLIGHT_SIGN_PFX_PASSWORD,
         [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::Exportable)
 }
 if ($cert -and -not $cert.HasPrivateKey) { throw "The signing certificate has no private key available." }
@@ -43,25 +43,25 @@ function Sign($path) {
     $ours = $r.SignerCertificate -and $r.SignerCertificate.Thumbprint -eq $cert.Thumbprint
     if (-not $ours) { throw "Signing $path failed: $($r.StatusMessage)" }
     if (-not $r.TimeStamperCertificate) { throw "Signing $path failed: no timestamp from $timestamp" }
-    if (-not $trusted -and -not $env:CLAUDE_SPEND_SIGN_ALLOW_UNTRUSTED) {
+    if (-not $trusted -and -not $env:SPENDLIGHT_SIGN_ALLOW_UNTRUSTED) {
         throw "Signed $path, but Windows doesn't trust the certificate ($($r.StatusMessage))."
     }
     Write-Host ("    signed {0}  ({1})" -f (Split-Path $path -Leaf), $cert.GetNameInfo('SimpleName', $false))
 }
 
-Step "Claude Code Spend $version"
+Step "Spendlight $version"
 if ($cert) { Write-Host "    Signing with: $($cert.Subject)  [$($cert.Thumbprint)]" }
 else { Write-Host "    No signing certificate configured: building unsigned." -ForegroundColor Yellow }
 if (Test-Path build) { Remove-Item -Recurse -Force build }
 New-Item -ItemType Directory -Force dist | Out-Null
 
 Step "Windows app (self-contained)"
-dotnet publish ClaudeSpend -c Release -o build\win-x64 --nologo -v q; Check "Windows app"
-Sign build\win-x64\ClaudeSpend.exe
+dotnet publish Spendlight -c Release -o build\win-x64 --nologo -v q; Check "Windows app"
+Sign build\win-x64\Spendlight.exe
 
 foreach ($rid in 'linux-x64', 'linux-arm64') {
     Step "Linux app ($rid)"
-    dotnet publish ClaudeSpend.Linux -c Release -r $rid -o "build\$rid" --nologo -v q; Check "Linux app $rid"
+    dotnet publish Spendlight.Linux -c Release -r $rid -o "build\$rid" --nologo -v q; Check "Linux app $rid"
 }
 
 Step "Windows uninstaller"
@@ -70,15 +70,15 @@ Sign build\uninstaller\Uninstall.exe
 
 Step "Windows setup"
 dotnet build installer\windows\Setup -c Release -o build\setup --nologo -v q; Check "Setup"
-Sign build\setup\ClaudeSpend-Setup.exe
-Copy-Item build\setup\ClaudeSpend-Setup.exe "dist\ClaudeSpend-Setup-$version.exe" -Force
+Sign build\setup\Spendlight-Setup.exe
+Copy-Item build\setup\Spendlight-Setup.exe "dist\Spendlight-Setup-$version.exe" -Force
 
 Step "Linux installer"
-python installer\linux\package.py --version $version --build build --ico ClaudeSpend\app.ico --out "dist\ClaudeSpend-Linux-$version.run"
+python installer\linux\package.py --version $version --build build --ico Spendlight\app.ico --out "dist\Spendlight-Linux-$version.run"
 Check "Linux installer"
 
 Step "Checksums"
-$sums = Get-ChildItem dist | Where-Object { $_.Name -like "ClaudeSpend-*-$version.*" } | ForEach-Object {
+$sums = Get-ChildItem dist | Where-Object { $_.Name -like "Spendlight-*-$version.*" } | ForEach-Object {
     "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), $_.Name
 }
 [IO.File]::WriteAllText("$PWD\dist\SHA256SUMS-$version.txt", ($sums -join "`n") + "`n")

@@ -1,6 +1,6 @@
 using System.Reflection;
 
-namespace ClaudeSpend;
+namespace Spendlight;
 
 public static class Dashboard
 {

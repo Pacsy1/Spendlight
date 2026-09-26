@@ -3,10 +3,10 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows.Forms;
 
-namespace ClaudeSpendSetup
+namespace SpendlightSetup
 {
     /// <summary>
-    /// ClaudeSpend-Setup.exe [--quiet] [--dir PATH] [--no-desktop] [--no-startmenu] [--launch]
+    /// Spendlight-Setup.exe [--quiet] [--dir PATH] [--no-desktop] [--no-startmenu] [--launch]
     /// Uninstall.exe          [--uninstall] [--quiet] [--remove-data]
     /// </summary>
     internal sealed class Options
@@ -58,6 +58,7 @@ namespace ClaudeSpendSetup
         private static int Run(string[] args)
         {
             var opts = Options.Parse(args);
+            InstallerCore.Log($"=== {System.IO.Path.GetFileName(System.Reflection.Assembly.GetEntryAssembly().Location)} {InstallerCore.Version} started: {string.Join(" ", args)}");
 
             // The installed Uninstall.exe hands over to a temp copy of itself, then exits.
             if (opts.Uninstall && opts.FromDir == null && InstallerCore.RelaunchFromTemp(args)) return 0;
@@ -94,7 +95,7 @@ namespace ClaudeSpendSetup
             }
             catch (Exception ex)
             {
-                try { File.WriteAllText(Path.Combine(Path.GetTempPath(), "ClaudeSpend-Setup-error.txt"), ex.ToString()); } catch { }
+                InstallerCore.Log($"Failed: {ex}");   // details in %TEMP%\Spendlight-Setup.log
                 return 1;
             }
         }

@@ -1,4 +1,4 @@
-namespace ClaudeSpend;
+namespace Spendlight;
 
 /// <summary>
 /// Anthropic first-party API list prices, USD per million tokens.

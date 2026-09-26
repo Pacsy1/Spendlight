@@ -4,10 +4,10 @@ Builds the self-extracting Linux installer:  install.sh + a .tar.gz payload appe
 __PAYLOAD_BELOW__ marker line.
 
 Payload layout:
-  bin/x64/claude-spend      bin/arm64/claude-spend     (0755)
-  share/claude-spend.svg    share/claude-spend-{48,64,128,256}.png    share/LICENSE
+  bin/x64/spendlight      bin/arm64/spendlight     (0755)
+  share/spendlight.svg    share/spendlight-{48,64,128,256}.png    share/LICENSE
 
-Usage: python package.py --version 1.0.0 --build ../../build --ico ../../ClaudeSpend/app.ico --out ../../dist/X.run
+Usage: python package.py --version 1.0.0 --build ../../build --ico ../../Spendlight/app.ico --out ../../dist/X.run
 """
 
 import argparse
@@ -52,23 +52,24 @@ def main():
     args = ap.parse_args()
 
     build = Path(args.build)
-    binaries = {arch: (build / f"linux-{arch}" / "claude-spend").read_bytes() for arch in ("x64", "arm64")}
+    binaries = {arch: (build / f"linux-{arch}" / "spendlight").read_bytes() for arch in ("x64", "arm64")}
     for arch, blob in binaries.items():
-        assert blob[:4] == b"\x7fELF", f"linux-{arch}/claude-spend is not a Linux executable"
+        assert blob[:4] == b"\x7fELF", f"linux-{arch}/spendlight is not a Linux executable"
 
     buf = io.BytesIO()
     with tarfile.open(fileobj=buf, mode="w:gz", compresslevel=9) as tar:
         for arch, blob in binaries.items():
-            add(tar, f"bin/{arch}/claude-spend", blob, 0o755)
-        add(tar, "share/claude-spend.svg", (HERE / "claude-spend.svg").read_bytes(), 0o644)
+            add(tar, f"bin/{arch}/spendlight", blob, 0o755)
+        add(tar, "share/spendlight.svg", (HERE / "spendlight.svg").read_bytes(), 0o644)
         # GPL: the license travels with the program.
         add(tar, "share/LICENSE", (HERE.parent.parent / "LICENSE").read_bytes(), 0o644)
         for size, png in ico_pngs(args.ico):
             if size in (48, 64, 128, 256):
-                add(tar, f"share/claude-spend-{size}.png", png, 0o644)
+                add(tar, f"share/spendlight-{size}.png", png, 0o644)
     payload = buf.getvalue()
 
-    script = (HERE / "install.sh").read_text(encoding="utf-8").replace("\r\n", "\n")
+    # No BOM (it would break the #! line) and LF line endings, whatever the editor did.
+    script = (HERE / "install.sh").read_text(encoding="utf-8").lstrip("﻿").replace("\r\n", "\n")
     size_mb = round(max(len(b) for b in binaries.values()) / 1048576)
     script = (script.replace("@VERSION@", args.version)
                     .replace("@SHA256@", hashlib.sha256(payload).hexdigest())

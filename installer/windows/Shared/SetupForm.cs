@@ -9,7 +9,7 @@ using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 
-namespace ClaudeSpendSetup
+namespace SpendlightSetup
 {
     /// <summary>
     /// A borderless window whose whole UI is installer.html in WebView2. The page and this form
@@ -31,7 +31,7 @@ namespace ClaudeSpendSetup
         {
             _opts = opts;
             _dark = opts.Theme == "dark" || (opts.Theme != "light" && Native.SystemUsesDarkTheme());
-            Text = opts.Uninstall ? "Uninstall Claude Code Spend" : "Claude Code Spend Setup";
+            Text = opts.Uninstall ? "Uninstall Spendlight" : "Spendlight Setup";
             FormBorderStyle = FormBorderStyle.None;
             StartPosition = FormStartPosition.CenterScreen;
             AutoScaleMode = AutoScaleMode.None;
@@ -110,10 +110,10 @@ namespace ClaudeSpendSetup
                 case "close": if (!_busy) Close(); break;
 
                 case "browse":
-                    var picked = FolderPicker.Pick(Handle, "Choose where to install Claude Code Spend", Get(msg, "dir"));
+                    var picked = FolderPicker.Pick(Handle, "Choose where to install Spendlight", Get(msg, "dir"));
                     if (picked != null)
                     {
-                        // Picking a parent folder installs into a "Claude Code Spend" folder inside it.
+                        // Picking a parent folder installs into a "Spendlight" folder inside it.
                         if (!picked.TrimEnd('\\').EndsWith(InstallerCore.AppName, StringComparison.OrdinalIgnoreCase))
                             picked = Path.Combine(picked, InstallerCore.AppName);
                         Send(new { type = "browsed", dir = picked, freeBytes = InstallerCore.FreeBytes(picked) });
@@ -128,13 +128,17 @@ namespace ClaudeSpendSetup
                     var dir = Get(msg, "dir");
                     var desktop = GetBool(msg, "desktop");
                     var startMenu = GetBool(msg, "startMenu");
-                    RunJob(p => InstallerCore.Install(dir, desktop, startMenu, p),
-                        () => _installedDir = InstallerCore.GetInstalled()?.Dir);
+                    RunJob(p =>
+                    {
+                        var r = InstallerCore.Install(dir, desktop, startMenu, p);
+                        _installedDir = InstallerCore.GetInstalled()?.Dir;
+                        return new { type = "done", startMenu = r.StartMenu, desktop = r.Desktop, warnings = r.Warnings.ToArray(), removedLegacy = r.RemovedLegacy };
+                    });
                     break;
 
                 case "uninstall":
                     var removeData = GetBool(msg, "removeData");
-                    RunJob(p => InstallerCore.Uninstall(removeData, p, _opts.FromDir), null);
+                    RunJob(p => { InstallerCore.Uninstall(removeData, p, _opts.FromDir); return new { type = "done" }; });
                     break;
 
                 case "launch":
@@ -155,7 +159,8 @@ namespace ClaudeSpendSetup
             }
         }
 
-        private void RunJob(Action<InstallerCore.Progress> job, Action after)
+        /// <summary>Runs an install/uninstall off the UI thread; the job's return value is the "done" message.</summary>
+        private void RunJob(Func<InstallerCore.Progress, object> job)
         {
             if (_busy) return;
             _busy = true;
@@ -163,13 +168,12 @@ namespace ClaudeSpendSetup
             {
                 try
                 {
-                    job((pct, step, detail) => Post(new { type = "progress", pct, step, detail }));
-                    after?.Invoke();
-                    Post(new { type = "done" });
+                    Post(job((pct, step, detail) => Post(new { type = "progress", pct, step, detail })));
                 }
                 catch (Exception ex)
                 {
-                    Post(new { type = "error", message = ex.Message });
+                    InstallerCore.Log($"Failed: {ex}");
+                    Post(new { type = "error", message = ex.Message, log = InstallerCore.LogPath });
                 }
                 finally
                 {
@@ -192,8 +196,8 @@ namespace ClaudeSpendSetup
                 defaults = new
                 {
                     dir,
-                    desktop = installed?.Desktop ?? !_opts.NoDesktop,
-                    startMenu = installed?.StartMenu ?? !_opts.NoStartMenu,
+                    desktop = !_opts.NoDesktop && (installed?.Desktop ?? true),
+                    startMenu = !_opts.NoStartMenu && (installed?.StartMenu ?? true),
                 },
                 requiredBytes = InstallerCore.RequiredBytes,
                 freeBytes = InstallerCore.FreeBytes(dir),
@@ -222,10 +226,10 @@ namespace ClaudeSpendSetup
         public static void Run(Options opts, IWin32Window owner)
         {
             var r = MessageBox.Show(owner,
-                "Claude Code Spend needs the Microsoft Edge WebView2 Runtime, which is part of Windows 11 " +
+                "Spendlight needs the Microsoft Edge WebView2 Runtime, which is part of Windows 11 " +
                 "and most up-to-date Windows 10 PCs, but it isn't installed here.\n\n" +
                 "Open the download page now? Run this setup again after installing it.",
-                "Claude Code Spend Setup", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
+                "Spendlight Setup", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
             if (r == DialogResult.Yes)
             {
                 try { Process.Start(new ProcessStartInfo("https://developer.microsoft.com/microsoft-edge/webview2/") { UseShellExecute = true }); } catch { }

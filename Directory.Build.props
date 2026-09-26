@@ -2,7 +2,7 @@
   <!-- Shared by every project in this folder: bump the version here and rebuild. -->
   <PropertyGroup>
     <Version>1.0.1</Version>
-    <Product>Claude Code Spend</Product>
+    <Product>Spendlight</Product>
     <Company>Pacsy1</Company>
     <Authors>Pacsy1</Authors>
     <Copyright>Copyright © 2026 Pacsy1. Free software under the GNU GPL v3 or later.</Copyright>

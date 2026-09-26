@@ -26,35 +26,38 @@ namespace ClaudeSpendSetup
             using (var r = new StreamReader(s, Encoding.UTF8)) return r.ReadToEnd();
         }
 
-        /// <summary>Loads WebView2's managed DLLs from resources, so Setup is a single file.</summary>
+        /// <summary>
+        /// Setup is a single file, so WebView2's DLLs travel inside it. They're unpacked to Setup's
+        /// temp folder and loaded from disk like any other DLL (never loaded from memory).
+        /// </summary>
         public static Assembly ResolveAssembly(object sender, ResolveEventArgs e)
         {
             var name = new AssemblyName(e.Name).Name;
-            using (var s = Open("lib/" + name + ".dll"))
-            {
-                if (s == null) return null;
-                var buf = new byte[s.Length];
-                int read = 0;
-                while (read < buf.Length) read += s.Read(buf, read, buf.Length - read);
-                return Assembly.Load(buf);
-            }
+            if (!Has("lib/" + name + ".dll")) return null;
+            return Assembly.LoadFrom(Path.Combine(ExtractLibs(), name + ".dll"));
         }
 
-        /// <summary>Setup's scratch folder in %TEMP% (WebView2 loader and browser profile).</summary>
+        /// <summary>Setup's scratch folder in %TEMP% (WebView2 DLLs and browser profile).</summary>
         public static string TempRoot => Path.Combine(Path.GetTempPath(), "ClaudeSpendSetup");
 
-        /// <summary>WebView2Loader.dll is native, so it's written to a temp folder and loaded from there.</summary>
-        public static string ExtractLoader()
+        private static readonly string[] Libs =
+            { "Microsoft.Web.WebView2.Core.dll", "Microsoft.Web.WebView2.WinForms.dll", "WebView2Loader.dll" };
+        private static string _libDir;
+
+        /// <summary>Writes the WebView2 DLLs to %TEMP%\ClaudeSpendSetup\lib-&lt;version&gt; once; returns that folder.</summary>
+        public static string ExtractLibs()
         {
-            var dir = Path.Combine(TempRoot, "loader-" + InstallerCore.Version);
-            var path = Path.Combine(dir, "WebView2Loader.dll");
+            if (_libDir != null) return _libDir;
+            var dir = Path.Combine(TempRoot, "lib-" + InstallerCore.Version);
             Directory.CreateDirectory(dir);
-            if (!File.Exists(path) || new FileInfo(path).Length != Length("lib/WebView2Loader.dll"))
+            foreach (var lib in Libs)
             {
-                using (var src = Open("lib/WebView2Loader.dll"))
+                var path = Path.Combine(dir, lib);
+                if (File.Exists(path) && new FileInfo(path).Length == Length("lib/" + lib)) continue;
+                using (var src = Open("lib/" + lib))
                 using (var dst = File.Create(path)) src.CopyTo(dst);
             }
-            return dir;
+            return _libDir = dir;
         }
     }
 

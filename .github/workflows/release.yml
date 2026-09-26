@@ -1,0 +1,78 @@
+# Builds the installers on GitHub's servers from the tagged source and publishes them as a
+# release, with a build provenance attestation for every file. Anyone can then check that a
+# download was built from this repository by this workflow (and not changed afterwards):
+#
+#   gh attestation verify ClaudeSpend-Setup-<version>.exe --repo Pacsy1/claude-code-spend
+#
+# To release: bump <Version> in Directory.Build.props, commit, then
+#   git tag v<version> && git push origin v<version>
+#
+# Signing: when a certificate is set up (see README › Code signing), add it as repository
+# secrets and pass it to build.ps1 through the CLAUDE_SPEND_SIGN_* environment variables.
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:   # manual run: builds and attests, but doesn't publish a release
+
+permissions:
+  contents: write        # create the release
+  id-token: write        # sign the attestations (Sigstore, via GitHub's OIDC)
+  attestations: write    # store the attestations
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build installers
+        shell: pwsh
+        run: ./build.ps1
+
+      - name: Check the tag matches the version
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          $v = "${{ github.ref_name }}".TrimStart('v')
+          if (-not (Test-Path "dist/ClaudeSpend-Setup-$v.exe")) { throw "Tag ${{ github.ref_name }} doesn't match <Version> in Directory.Build.props" }
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            dist/ClaudeSpend-Setup-*.exe
+            dist/ClaudeSpend-Linux-*.run
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers
+          path: dist/*
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $v = "${{ github.ref_name }}".TrimStart('v')
+          $notes = @"
+          Built on GitHub Actions from commit ${{ github.sha }} ([build log](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})).
+
+          **Verify a download** (proves it was built from this repository's source by this workflow):
+          ``````
+          gh attestation verify <file> --repo ${{ github.repository }}
+          ``````
+          SHA-256 checksums are in ``SHA256SUMS-$v.txt``.
+          "@
+          gh release create "${{ github.ref_name }}" dist/* --title "Claude Code Spend $v" --notes $notes --verify-tag

@@ -64,6 +64,50 @@ installer/linux/            Self-extracting .run installer (bash; terminal UI or
 build.ps1                   Builds everything into dist/
 ```
 
+## Verifying a download
+
+Releases are built by [GitHub Actions](.github/workflows/release.yml) from the tagged source. Each installer carries a signed [build provenance attestation](https://docs.github.com/actions/security-for-github-actions/using-artifact-attestations), which proves it was built from this repository by that workflow and hasn't been changed since:
+
+```bash
+gh attestation verify ClaudeSpend-Setup-<version>.exe --repo Pacsy1/claude-code-spend
+```
+
+Each release also lists SHA-256 checksums in `SHA256SUMS-<version>.txt`.
+
+## Exactly what the installers do
+
+Nothing is hidden, and all of it is in [`installer/`](installer/):
+
+**Windows setup** (runs as you, never as administrator):
+- **Files:** copies `ClaudeSpend.exe`, `Uninstall.exe` and `LICENSE.txt` into `%LOCALAPPDATA%\Programs\Claude Code Spend` (or the folder you choose).
+- **Shortcuts:** adds Start menu and desktop shortcuts, if you ticked them.
+- **Registry:** adds one entry under `HKCU\…\Uninstall\ClaudeCodeSpend`, so it appears in Settings › Apps.
+- **Temp files:** unpacks the WebView2 DLLs it needs to draw its window into `%TEMP%\ClaudeSpendSetup`.
+- **Updates:** if an older copy is running, asks it to close (like clicking its X) and never force-kills anything.
+- **Uninstalling:** copies itself to `%TEMP%` and runs from there, the same approach as Inno Setup and NSIS. That's how the installed `Uninstall.exe` can be removed. It deletes only the files above, by exact name, and deletes the folder only if it's then empty.
+
+**Linux installer:** puts the app in `~/.local/share/claude-spend`, links `claude-spend` and `claude-spend-uninstall` into `~/.local/bin`, and adds a menu entry and icon. It verifies its own SHA-256 checksum before unpacking. Use `--extract DIR` to inspect the contents without installing.
+
+**The app** only reads files under `~/.claude/projects`. Its only network use is its own server on `127.0.0.1`.
+
+## Code signing
+
+`build.ps1` signs the app, the uninstaller and the setup (inner files first, so everything the installer drops is signed too) whenever a code-signing certificate is configured. With none configured, it builds unsigned.
+
+| Variable | Meaning |
+|---|---|
+| `CLAUDE_SPEND_SIGN_THUMBPRINT` | Thumbprint of a code-signing certificate in your Windows certificate store (works with hardware tokens and cloud-token certificates that show up there) |
+| `CLAUDE_SPEND_SIGN_PFX` / `CLAUDE_SPEND_SIGN_PFX_PASSWORD` | Or: a `.pfx` file and its password |
+| `CLAUDE_SPEND_TIMESTAMP_URL` | RFC 3161 timestamp server (default `http://timestamp.digicert.com`) |
+
+## License
+
+Copyright © 2026 Pacsy1
+
+Claude Code Spend is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with this program (see [LICENSE](LICENSE)). If not, see <https://www.gnu.org/licenses/>.
+
 ## Privacy
 
 - **Logs stay local:** they're read from disk on every refresh and never stored or uploaded.

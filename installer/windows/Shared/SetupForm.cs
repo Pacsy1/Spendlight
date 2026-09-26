@@ -69,7 +69,7 @@ namespace ClaudeSpendSetup
         {
             try
             {
-                CoreWebView2Environment.SetLoaderDllFolderPath(Embedded.ExtractLoader());
+                CoreWebView2Environment.SetLoaderDllFolderPath(Embedded.ExtractLibs());
                 var env = await CoreWebView2Environment.CreateAsync(null, Path.Combine(Embedded.TempRoot, "webview"));
                 await _web.EnsureCoreWebView2Async(env);
             }
@@ -134,7 +134,7 @@ namespace ClaudeSpendSetup
 
                 case "uninstall":
                     var removeData = GetBool(msg, "removeData");
-                    RunJob(p => InstallerCore.Uninstall(removeData, p), null);
+                    RunJob(p => InstallerCore.Uninstall(removeData, p, _opts.FromDir), null);
                     break;
 
                 case "launch":
@@ -142,6 +142,10 @@ namespace ClaudeSpendSetup
                     try { Process.Start(new ProcessStartInfo(exe) { UseShellExecute = true, WorkingDirectory = Path.GetDirectoryName(exe) }); }
                     catch (Exception ex) { Send(new { type = "error", message = "Couldn't start the app: " + ex.Message }); break; }
                     Close();
+                    break;
+
+                case "openSource":   // fixed URL; the page can't choose where this goes
+                    try { Process.Start(new ProcessStartInfo(InstallerCore.SourceUrl) { UseShellExecute = true }); } catch { }
                     break;
 
                 case "openFolder":

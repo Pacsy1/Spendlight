@@ -370,6 +370,8 @@ tbody tr.clickable { cursor: pointer; }
 #tip .kv { display: flex; justify-content: space-between; gap: 16px; padding: 1px 0; color: var(--ink-2); }
 #tip .kv b { color: var(--ink); font-variant-numeric: tabular-nums; }
 
+.foot-link { color: var(--ink-2); text-underline-offset: 2px; }
+.foot-link:hover { color: var(--ink); }
 footer { margin-top: 28px; font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 
 /* ---------- Responsive ---------- */
@@ -563,7 +565,7 @@ footer { margin-top: 28px; font-size: 12px; color: var(--muted); display: flex; 
 
   <footer>
     <span>On a Pro or Max plan you aren't billed per token — these figures are what the same usage would cost on the API.</span>
-    <span id="foot-meta"></span>
+    <span><span id="foot-meta"></span> · Free software (GPL-3.0) · <a class="foot-link" href="https://github.com/Pacsy1/claude-code-spend" target="_blank" rel="noopener">Source code</a></span>
   </footer>
 </div>
 

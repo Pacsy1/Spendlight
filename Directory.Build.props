@@ -1,10 +1,12 @@
 <Project>
   <!-- Shared by every project in this folder: bump the version here and rebuild. -->
   <PropertyGroup>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <Product>Claude Code Spend</Product>
-    <Company>Claude Code Spend</Company>
-    <Copyright>Local build</Copyright>
+    <Company>Pacsy1</Company>
+    <Authors>Pacsy1</Authors>
+    <Copyright>Copyright © 2026 Pacsy1. Free software under the GNU GPL v3 or later.</Copyright>
+    <Description>See what your Claude Code usage would cost at Anthropic API list prices.</Description>
     <LangVersion>latest</LangVersion>
     <!-- Never bake this machine's folder paths into binaries: map source paths to /src/. -->
     <PathMap>$(MSBuildThisFileDirectory)=/src/</PathMap>

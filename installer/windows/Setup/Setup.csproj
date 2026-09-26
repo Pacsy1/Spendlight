@@ -30,6 +30,7 @@
     <EmbeddedResource Include="..\Shared\installer.html" LogicalName="installer.html" />
     <EmbeddedResource Include="$(PayloadDir)win-x64\ClaudeSpend.exe" LogicalName="payload/ClaudeSpend.exe" />
     <EmbeddedResource Include="$(PayloadDir)uninstaller\Uninstall.exe" LogicalName="payload/Uninstall.exe" />
+    <EmbeddedResource Include="..\..\..\LICENSE" LogicalName="payload/LICENSE.txt" />
     <EmbeddedResource Include="$(WebView2Pkg)lib\net462\Microsoft.Web.WebView2.Core.dll" LogicalName="lib/Microsoft.Web.WebView2.Core.dll" />
     <EmbeddedResource Include="$(WebView2Pkg)lib\net462\Microsoft.Web.WebView2.WinForms.dll" LogicalName="lib/Microsoft.Web.WebView2.WinForms.dll" />
     <EmbeddedResource Include="$(WebView2Pkg)runtimes\win-x64\native\WebView2Loader.dll" LogicalName="lib/WebView2Loader.dll" />

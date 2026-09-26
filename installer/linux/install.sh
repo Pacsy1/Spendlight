@@ -11,6 +11,9 @@
 #
 # It installs a single self-contained binary (no .NET or other runtime needed), a menu
 # entry and icon, the `claude-spend` command and a `claude-spend-uninstall` command.
+#
+# Copyright (C) 2026 Pacsy1. Free software: GNU GPL v3 or later (see LICENSE).
+# Source: https://github.com/Pacsy1/claude-code-spend
 
 if [ -z "${BASH_VERSION:-}" ]; then exec bash "$0" "$@"; fi
 set -euo pipefail
@@ -247,6 +250,7 @@ install_files() {
   install -m 0755 "$TMP/bin/$ARCH/$APP_ID" "$APPDIR/$APP_ID.new"
   mv -f "$APPDIR/$APP_ID.new" "$APPDIR/$APP_ID"
   install -m 0644 "$TMP/share/$APP_ID.svg" "$APPDIR/icon.svg"
+  if [ -f "$TMP/share/LICENSE" ]; then install -m 0644 "$TMP/share/LICENSE" "$APPDIR/LICENSE"; fi
   printf '%s\n' "$VERSION" > "$APPDIR/VERSION"
 }
 write_uninstaller() {
@@ -282,7 +286,7 @@ rm -f "$APPS/$APP_ID.desktop" "$ICONS/scalable/apps/$APP_ID.svg" "$ICONS"/{48x48
 command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database -q "$APPS" 2>/dev/null
 command -v gtk-update-icon-cache >/dev/null 2>&1 && gtk-update-icon-cache -q -t "$ICONS" 2>/dev/null
 done_ "Removed the menu entry and icon"
-rm -f "$APPDIR/$APP_ID" "$APPDIR/$APP_ID.new" "$APPDIR/icon.svg" "$APPDIR/VERSION"
+rm -f "$APPDIR/$APP_ID" "$APPDIR/$APP_ID.new" "$APPDIR/icon.svg" "$APPDIR/VERSION" "$APPDIR/LICENSE"
 [ "$PURGE" = yes ] && rm -rf "$APPDIR/browser"
 rm -f "$APPDIR/uninstall.sh"
 rmdir "$APPDIR" 2>/dev/null
@@ -411,6 +415,7 @@ fi
 banner "Installer"
 printf '  %sSee what your Claude Code usage would cost at Anthropic API list%s\n' "$INK" "$R"
 printf '  %sprices %s by model, project and session.%s\n' "$INK" "$DOT" "$R"
+printf '  %sFree software under the GNU GPL v3 %s github.com/Pacsy1/claude-code-spend%s\n' "$MUTED" "$DOT" "$R"
 
 section "System"
 ok "Linux ${ARCH_LABEL}${DISTRO:+ $DOT $DISTRO} $DOT $LIBC"

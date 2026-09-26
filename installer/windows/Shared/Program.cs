@@ -13,6 +13,8 @@ namespace ClaudeSpendSetup
     {
         public bool Uninstall, Quiet, NoDesktop, NoStartMenu, Launch, RemoveData, Debug;
         public string Dir, Page, Theme;
+        public string FromDir;    // set on the temp copy of the uninstaller: the install folder
+        public int WaitPid;       // the original uninstaller, which must exit before its file can go
 
         public static Options Parse(string[] args)
         {
@@ -32,6 +34,8 @@ namespace ClaudeSpendSetup
                     case "--dir": case "/dir": if (i + 1 < args.Length) o.Dir = args[++i]; break;
                     case "--page": if (i + 1 < args.Length) o.Page = args[++i]; break;   // design preview
                     case "--theme": if (i + 1 < args.Length) o.Theme = args[++i]; break; // design preview
+                    case "--from": if (i + 1 < args.Length) o.FromDir = args[++i]; break;
+                    case "--wait-pid": if (i + 1 < args.Length) int.TryParse(args[++i], out o.WaitPid); break;
                 }
             }
             // The uninstaller carries no app payload, so it can only uninstall.
@@ -54,6 +58,12 @@ namespace ClaudeSpendSetup
         private static int Run(string[] args)
         {
             var opts = Options.Parse(args);
+
+            // The installed Uninstall.exe hands over to a temp copy of itself, then exits.
+            if (opts.Uninstall && opts.FromDir == null && InstallerCore.RelaunchFromTemp(args)) return 0;
+            if (opts.WaitPid > 0) InstallerCore.WaitForExit(opts.WaitPid);
+            InstallerCore.CleanTempCopies();
+
             if (opts.Quiet) return RunQuiet(opts);
 
             Native.SetDpiAware();
@@ -61,7 +71,6 @@ namespace ClaudeSpendSetup
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new SetupForm(opts));
             CleanTemp();
-            InstallerCore.FinishSelfCleanup();
             return 0;
         }
 
@@ -70,10 +79,7 @@ namespace ClaudeSpendSetup
             try
             {
                 if (opts.Uninstall)
-                {
-                    InstallerCore.Uninstall(opts.RemoveData, (p, s, d) => { });
-                    InstallerCore.FinishSelfCleanup();
-                }
+                    InstallerCore.Uninstall(opts.RemoveData, (p, s, d) => { }, opts.FromDir);
                 else
                 {
                     InstallerCore.Install(opts.Dir ?? InstallerCore.GetInstalled()?.Dir ?? InstallerCore.DefaultDir,

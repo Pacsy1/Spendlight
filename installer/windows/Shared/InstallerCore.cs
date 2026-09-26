@@ -18,6 +18,9 @@ namespace ClaudeSpendSetup
         private const string RegPath = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\ClaudeCodeSpend";
         private const string PayloadApp = "payload/ClaudeSpend.exe";
         private const string PayloadUninstaller = "payload/Uninstall.exe";
+        private const string PayloadLicense = "payload/LICENSE.txt";
+        public const string LicenseFile = "LICENSE.txt";
+        public const string SourceUrl = "https://github.com/Pacsy1/claude-code-spend";
 
         /// <summary>Progress callback: percent (0-100), step id, human-readable detail.</summary>
         public delegate void Progress(int percent, string step, string detail);
@@ -142,6 +145,8 @@ namespace ClaudeSpendSetup
 
             progress(81, "copy", "Adding the uninstaller");
             ExtractTo(PayloadUninstaller, Path.Combine(dir, UninstallExe), null);
+            // GPL: the license travels with the program.
+            if (Embedded.Has(PayloadLicense)) ExtractTo(PayloadLicense, Path.Combine(dir, LicenseFile), null);
 
             // Moving to a new folder: remove the old copy.
             if (previous != null && !SamePath(previous.Dir, dir)) RemoveAppFiles(previous.Dir);
@@ -165,10 +170,11 @@ namespace ClaudeSpendSetup
             progress(100, "done", "Installed");
         }
 
-        public static void Uninstall(bool removeData, Progress progress)
+        /// <param name="fromDir">The install folder, when this uninstaller runs as a temp copy (see RelaunchFromTemp).</param>
+        public static void Uninstall(bool removeData, Progress progress, string fromDir = null)
         {
             var info = GetInstalled();
-            var dir = info?.Dir ?? Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+            var dir = info?.Dir ?? fromDir ?? Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
 
             progress(5, "close", "Closing Claude Code Spend if it's open");
             CloseRunningApp(dir);
@@ -198,46 +204,71 @@ namespace ClaudeSpendSetup
                 Pace();
             }
 
-            _pendingSelfDelete = dir;   // Uninstall.exe removes itself once it exits (see FinishSelfCleanup)
             progress(100, "done", "Removed");
         }
-
-        private static string _pendingSelfDelete;
 
         /// <summary>Deletes only files Setup put there; the folder goes only if it ends up empty.</summary>
         private static void RemoveAppFiles(string dir)
         {
             TryDelete(Path.Combine(dir, AppExe));
             TryDelete(Path.Combine(dir, AppExe + ".new"));
+            TryDelete(Path.Combine(dir, LicenseFile));
             var me = Assembly.GetEntryAssembly().Location;
             var uninstaller = Path.Combine(dir, UninstallExe);
-            if (!SamePath(me, uninstaller)) TryDelete(uninstaller);
+            if (!SamePath(me, uninstaller))
+            {
+                // A just-exited original may still hold its file for a moment.
+                for (int i = 0; i < 10 && File.Exists(uninstaller); i++) { TryDelete(uninstaller); if (File.Exists(uninstaller)) Thread.Sleep(300); }
+            }
             try { if (Directory.Exists(dir) && !Directory.EnumerateFileSystemEntries(dir).Any()) Directory.Delete(dir); } catch { }
         }
 
+        private const string TempCopyPrefix = "ClaudeSpend-Uninstall-";
+
         /// <summary>
-        /// A running Uninstall.exe can't delete itself: call this as the process exits, and a hidden
-        /// cmd removes it (and the folder, only if empty) a moment later. `ping` is the delay because
-        /// `timeout` refuses to run without a console.
+        /// A running program can't delete its own file. So, like Inno Setup and NSIS, the installed
+        /// Uninstall.exe copies itself to %TEMP%, starts that copy and exits; the copy then removes
+        /// the installed files, including the original Uninstall.exe. Returns true if it relaunched
+        /// (the caller should exit).
         /// </summary>
-        public static void FinishSelfCleanup()
+        public static bool RelaunchFromTemp(string[] args)
         {
-            var dir = _pendingSelfDelete;
-            if (dir == null) return;
             var me = Assembly.GetEntryAssembly().Location;
-            if (!SamePath(Path.GetDirectoryName(me), dir)) return;
-            var wait = "ping -n 3 127.0.0.1 >NUL";
-            var cmd = $"/c {wait} & del /f /q \"{me}\" & {wait} & del /f /q \"{me}\" 2>NUL & rd \"{dir}\"";
+            var installed = GetInstalled();
+            var myDir = Path.GetDirectoryName(me);
+            bool runningFromInstall = installed != null ? SamePath(myDir, installed.Dir)
+                                                        : string.Equals(Path.GetFileName(me), UninstallExe, StringComparison.OrdinalIgnoreCase);
+            if (!runningFromInstall) return false;
+
+            var copy = Path.Combine(Path.GetTempPath(), TempCopyPrefix + Guid.NewGuid().ToString("N").Substring(0, 8) + ".exe");
+            File.Copy(me, copy, true);
+            var passOn = string.Join(" ", args.Select(Quote));
+            Process.Start(new ProcessStartInfo(copy, $"{passOn} --from \"{myDir}\" --wait-pid {Process.GetCurrentProcess().Id}")
+            {
+                UseShellExecute = false,
+                WorkingDirectory = Path.GetTempPath(),
+            });
+            return true;
+        }
+
+        /// <summary>Removes temp uninstaller copies left by earlier uninstalls (never the running one).</summary>
+        public static void CleanTempCopies()
+        {
+            var me = Assembly.GetEntryAssembly().Location;
             try
             {
-                Process.Start(new ProcessStartInfo("cmd.exe", cmd)
-                {
-                    CreateNoWindow = true, UseShellExecute = false, WindowStyle = ProcessWindowStyle.Hidden,
-                    WorkingDirectory = Path.GetTempPath(),
-                });
+                foreach (var f in Directory.GetFiles(Path.GetTempPath(), TempCopyPrefix + "*.exe"))
+                    if (!SamePath(f, me)) TryDelete(f);
             }
             catch { }
         }
+
+        public static void WaitForExit(int pid)
+        {
+            try { using (var p = Process.GetProcessById(pid)) p.WaitForExit(10000); } catch { /* already gone */ }
+        }
+
+        private static string Quote(string a) => a.IndexOfAny(new[] { ' ', '"' }) >= 0 ? "\"" + a.Replace("\"", "\\\"") + "\"" : a;
 
         private static void Register(string dir)
         {
@@ -247,7 +278,8 @@ namespace ClaudeSpendSetup
                 var uninstaller = Path.Combine(dir, UninstallExe);
                 key.SetValue("DisplayName", AppName);
                 key.SetValue("DisplayVersion", Version);
-                key.SetValue("Publisher", AppName);
+                key.SetValue("Publisher", "Pacsy1");
+                key.SetValue("URLInfoAbout", SourceUrl);
                 key.SetValue("DisplayIcon", exe + ",0");
                 key.SetValue("InstallLocation", dir);
                 key.SetValue("UninstallString", $"\"{uninstaller}\" --uninstall");
@@ -294,19 +326,27 @@ namespace ClaudeSpendSetup
             }
         }
 
+        /// <summary>
+        /// Asks a running copy of the app (from this install folder only) to close, the same way
+        /// clicking its X does. Setup never force-kills anything: if the app doesn't close, it
+        /// stops and asks you to close it yourself.
+        /// </summary>
         private static void CloseRunningApp(string dir)
         {
             foreach (var p in Process.GetProcessesByName(Path.GetFileNameWithoutExtension(AppExe)))
             {
+                bool stillRunning = false;
                 try
                 {
                     var path = p.MainModule?.FileName;
                     if (path == null || !SamePath(Path.GetDirectoryName(path), dir)) continue;
                     p.CloseMainWindow();
-                    if (!p.WaitForExit(4000)) { p.Kill(); p.WaitForExit(3000); }
+                    stillRunning = !p.WaitForExit(8000);
                 }
                 catch { }
                 finally { p.Dispose(); }
+                if (stillRunning)
+                    throw new InvalidOperationException($"{AppName} is still open. Close it, then choose Try again.");
             }
         }
 

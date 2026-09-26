@@ -11,6 +11,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>claude-spend</AssemblyName>
+    <AssemblyTitle>Claude Code Spend</AssemblyTitle>
     <RootNamespace>ClaudeSpend</RootNamespace>
     <!-- No libicu dependency: dates and numbers are formatted by the browser anyway. -->
     <InvariantGlobalization>true</InvariantGlobalization>

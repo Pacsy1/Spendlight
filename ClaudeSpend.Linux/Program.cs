@@ -41,6 +41,9 @@ for (int i = 0; i < args.Length; i++)
                 Environment:
                   CLAUDE_SPEND_BROWSER   Browser command to open the dashboard with
                   CLAUDE_CONFIG_DIR      Claude Code config dir (logs are in <dir>/projects)
+
+                Copyright (C) 2026 Pacsy1. Free software under the GNU GPL v3 or later;
+                there is NO WARRANTY. Source: https://github.com/Pacsy1/claude-code-spend
                 """);
             return 0;
         default:

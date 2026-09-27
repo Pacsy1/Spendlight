@@ -395,10 +395,133 @@ footer { margin-top: 28px; font-size: 12px; color: var(--muted); display: flex; 
   .heat .cl { font-size: 9px; }
   .search { width: 100%; }
 }
+/* ---------- Flags & currency ---------- */
+.flag {
+  position: relative; display: inline-block; flex: none; width: 20px; height: 20px;
+  border-radius: 6px; overflow: hidden; background: var(--track);
+}
+.flag svg { display: block; width: 100%; height: 100%; }
+.flag::after {   /* hairline so white flags (Japan, Israel…) keep their edge */
+  content: ""; position: absolute; inset: 0; border-radius: inherit; corner-shape: inherit;
+  box-shadow: inset 0 0 0 1px var(--border-strong); pointer-events: none;
+}
+.currency-label { max-width: 230px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.panel .opt .flag { margin-right: 2px; }
+.panel .opt .code { margin-left: auto; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.panel .opt[aria-checked="true"] .code { color: var(--ink); }
+.panel .note { font-size: 11.5px; color: var(--muted); padding: 8px 10px 4px; border-top: 1px solid var(--border); margin-top: 6px; line-height: 1.45; }
+.fx-note { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.btn.busy { opacity: .7; }
+.btn.busy .flag { animation: pulse 1s infinite ease-in-out; }
+
+/* ---------- Skeleton loading ---------- */
+.skel {
+  display: block; border-radius: 8px;
+  background: linear-gradient(100deg, var(--track) 30%, color-mix(in srgb, var(--track), var(--ink) 7%) 50%, var(--track) 70%);
+  background-size: 300% 100%; animation: shimmer 1.4s ease-in-out infinite;
+}
+.skel.inline { display: inline-block; vertical-align: middle; }
+.skel.round { border-radius: 50%; }
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
+.skel-cols { display: flex; align-items: flex-end; gap: 10px; height: 300px; padding: 16px 8px 30px 52px; }
+.skel-cols .skel { flex: 1; max-width: 24px; border-radius: 6px 6px 0 0; }
+.skel-row { display: grid; grid-template-columns: minmax(120px, 190px) 1fr 90px; gap: 14px; align-items: center; padding: 11px 0; }
+.skel-line { height: 12px; }
+.loading .chart-hint, .loading #main-hint { visibility: hidden; }
+.heat .cell.skel { background: linear-gradient(100deg, var(--track) 30%, color-mix(in srgb, var(--track), var(--ink) 7%) 50%, var(--track) 70%); background-size: 300% 100%; }
+
+/* ---------- Title bar (Windows app) ---------- */
+.titlebar {
+  position: fixed; inset: 0 0 auto 0; z-index: 40; height: 40px;
+  display: flex; align-items: center; background: var(--page); user-select: none; -webkit-user-select: none;
+  transition: box-shadow .15s;
+}
+.titlebar.scrolled { box-shadow: 0 1px 0 var(--border), 0 6px 16px -12px rgba(0,0,0,.35); }
+.tb-brand { display: flex; align-items: center; gap: 10px; padding-left: 14px; min-width: 0; flex: 0 1 auto; }
+.tb-mark { width: 20px; height: 20px; border-radius: 6px; background: var(--s1); display: grid; place-items: center; flex: none; box-shadow: inset 0 -1px 0 rgba(0,0,0,.15); }
+.tb-name { font-size: 13px; font-weight: 650; letter-spacing: -.005em; flex: none; }
+.tb-sub { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.tb-drag { flex: 1; align-self: stretch; min-width: 24px; }
+.tb-actions { display: flex; align-items: center; gap: 6px; padding-right: 10px; }
+.tb-actions .btn.icon { width: 30px; height: 30px; border-color: transparent; background: transparent; }
+.tb-actions .btn.icon:hover { background: var(--hover); }
+.tb-buttons { display: flex; align-self: stretch; }
+.wbtn {
+  width: 46px; border: 0; background: transparent; color: var(--ink-2); display: grid; place-items: center;
+  transition: background .1s, color .1s;
+}
+.wbtn:hover { background: var(--hover); color: var(--ink); }
+.wbtn:active { background: color-mix(in srgb, var(--hover), var(--ink) 6%); }
+.wbtn.close:hover { background: #c42b1c; color: #fff; }
+.wbtn.close:active { background: #b22a1b; color: #fff; }
+.wbtn .i-restore { display: none; }
+.maximized .wbtn .i-max { display: none; }
+.maximized .wbtn .i-restore { display: block; }
+.inactive .tb-name, .inactive .tb-mark, .inactive .wbtn svg { opacity: .45; }
+.framed body { padding-top: 40px; }
+.framed header.top { display: none; }
+.framed .wrap { padding-top: 10px; }
+.framed .filters { top: 48px; }
+@media (max-width: 720px) { .tb-sub { display: none; } .currency-label { display: none; } }
+
+/* ---------- Squircles ----------
+   Rounded rectangles get superellipse corners. A squircle corner needs a larger radius to look
+   as soft as a circular one, so the radii grow too. Browsers without corner-shape keep the
+   circular radii above. Circles (dots) and pills stay round. */
+@supports (corner-shape: squircle) {
+  .brand-mark, .tb-mark, .btn, .btn-link, .filters, .seg, .seg button, .panel, .panel .opt,
+  .date-row input[type="date"], .panel-search, .ms-row, .sw, .card, .table-wrap, .rank-row,
+  .insight, .heat .cell, .scale .steps i, .search, .banner, #tip, .flag, .skel:not(.round),
+  .banner code, .chart-hint kbd, .ms-row input { corner-shape: squircle; }
+  .brand-mark { border-radius: 14px; }
+  .tb-mark, .flag { border-radius: 8px; }
+  .btn { border-radius: 14px; }
+  .btn-link { border-radius: 10px; }
+  .filters { border-radius: 24px; }
+  .seg { border-radius: 15px; }
+  .seg button { border-radius: 11px; }
+  .panel { border-radius: 20px; }
+  .panel .opt, .ms-row, .panel-search, .date-row input[type="date"] { border-radius: 12px; }
+  .card { border-radius: 28px; }
+  .table-wrap, .insight, .banner, .rank-row { border-radius: 17px; }
+  .search { border-radius: 14px; }
+  .sw { border-radius: 4px; }
+  .heat .cell, .heat .cell:hover, .heat .cell:focus-visible, .scale .steps i { border-radius: 36%; }
+  #tip { border-radius: 16px; }
+  .skel { border-radius: 12px; }
+  .skel-cols .skel { border-radius: 8px 8px 0 0; }
+}
+
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 </head>
-<body>
+<body class="loading">
+<!-- Title bar: only in the Windows app, which hides Windows' own. The page asks the window to
+     move / minimize / maximize / close through web messages. -->
+<div class="titlebar" id="titlebar" hidden>
+  <div class="tb-brand">
+    <span class="tb-mark" aria-hidden="true">
+      <svg width="12" height="12" viewBox="0 0 18 18" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round"><path d="M4 14V9M9 14V4M14 14v-3.5"/></svg>
+    </span>
+    <span class="tb-name">Spendlight</span>
+    <span class="tb-sub" id="tb-sub"></span>
+  </div>
+  <div class="tb-drag"></div>
+  <div class="tb-actions" id="tb-actions"></div>
+  <div class="tb-buttons">
+    <button class="wbtn" data-win="minimize" title="Minimize" aria-label="Minimize">
+      <svg width="10" height="10" viewBox="0 0 10 10"><path d="M0 5.5h10" stroke="currentColor" stroke-width="1"/></svg>
+    </button>
+    <button class="wbtn" data-win="maximize" id="wbtn-max" title="Maximize" aria-label="Maximize">
+      <svg class="i-max" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1"><rect x=".5" y=".5" width="9" height="9" rx="1.5"/></svg>
+      <svg class="i-restore" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1"><rect x=".5" y="2.5" width="7" height="7" rx="1.3"/><path d="M2.5 2.5V1.9A1.4 1.4 0 0 1 3.9.5h4.2a1.4 1.4 0 0 1 1.4 1.4v4.2a1.4 1.4 0 0 1-1.4 1.4h-.6"/></svg>
+    </button>
+    <button class="wbtn close" data-win="close" title="Close" aria-label="Close">
+      <svg width="10" height="10" viewBox="0 0 10 10"><path d="M.5.5l9 9M9.5.5l-9 9" stroke="currentColor" stroke-width="1.1"/></svg>
+    </button>
+  </div>
+</div>
+
 <div class="wrap" id="app">
 
   <header class="top">
@@ -456,6 +579,15 @@ footer { margin-top: 28px; font-size: 12px; color: var(--muted); display: flex; 
       <div class="panel" id="projects-panel" hidden style="min-width:320px"></div>
     </div>
 
+    <div class="pop" id="pop-currency">
+      <button class="btn" id="currency-btn" aria-haspopup="true" aria-expanded="false" title="Currency">
+        <span class="flag" id="currency-flag"></span>
+        <span id="currency-label" class="currency-label">United States Dollar (USD)</span>
+        <svg class="caret" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m2 3.5 3 3 3-3"/></svg>
+      </button>
+      <div class="panel" id="currency-panel" hidden style="min-width:340px"></div>
+    </div>
+
     <div id="session-chip-host"></div>
     <button class="btn-link" id="reset" hidden>Reset filters</button>
   </nav>
@@ -467,6 +599,7 @@ footer { margin-top: 28px; font-size: 12px; color: var(--muted); display: flex; 
         <div class="hero-label">Estimated API cost</div>
         <div class="hero-range" id="hero-range"></div>
         <div class="hero-value" id="hero-value">—</div>
+        <div class="fx-note" id="fx-note" hidden></div>
         <div class="delta" id="hero-delta"></div>
       </div>
       <svg class="spark" id="spark" aria-hidden="true"></svg>
@@ -556,7 +689,7 @@ footer { margin-top: 28px; font-size: 12px; color: var(--muted); display: flex; 
     <div class="card-head">
       <div>
         <h2 class="card-title">Rates used</h2>
-        <p class="card-sub">USD per million tokens · edit <code>PRICES</code> in <span id="price-source">spendlight.py</span> to change</p>
+        <p class="card-sub"><span id="price-unit">USD per million tokens</span> · edit <code>PRICES</code> in <span id="price-source">spendlight.py</span> to change</p>
       </div>
       <div class="tools"><button class="btn-link" id="rates-toggle">Show all models</button></div>
     </div>
@@ -596,23 +729,36 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
 };
 
-const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 const int = new Intl.NumberFormat("en-US");
-function fmtUSD(v) {
-  if (!v) return "$0.00";
-  if (Math.abs(v) < 0.01) return v < 0 ? "−<$0.01" : "<$0.01";
-  return usd.format(v);
+
+/* Money is stored converted into the display currency (see applyFx); these only format it. */
+const ZERO_DECIMALS = new Set(["JPY", "KRW", "ISK", "HUF", "IDR"]);
+// Where the short local symbol would be ambiguous ($, ¥, kr), show the distinct form: CA$, CN¥, SEK…
+const AMBIGUOUS_SYMBOL = new Set(["CAD", "AUD", "NZD", "HKD", "SGD", "MXN", "CNY", "SEK", "NOK", "DKK", "ISK"]);
+const nfCache = new Map();
+function nf(opts) {
+  const key = JSON.stringify(opts);
+  if (!nfCache.has(key)) nfCache.set(key, new Intl.NumberFormat("en-US", opts));
+  return nfCache.get(key);
 }
-function fmtUSDc(v) {
+function moneyOpts(extra) {
+  const code = S.fx.code, d = ZERO_DECIMALS.has(code) ? 0 : 2;
+  const display = AMBIGUOUS_SYMBOL.has(code) ? "symbol" : "narrowSymbol";
+  return Object.assign({ style: "currency", currency: code, currencyDisplay: display, minimumFractionDigits: d, maximumFractionDigits: d }, extra);
+}
+function fmtMoney(v) {
+  if (!v) return nf(moneyOpts()).format(0);
+  const smallest = ZERO_DECIMALS.has(S.fx.code) ? 1 : 0.01;
+  if (Math.abs(v) < smallest) return (v < 0 ? "−<" : "<") + nf(moneyOpts()).format(smallest);
+  return nf(moneyOpts()).format(v);
+}
+/* Short form for axes and tight spots: $1.2K, Ft245K, €12. */
+function fmtMoneyC(v) {
   const a = Math.abs(v);
-  if (a >= 1e6) return "$" + (v / 1e6).toFixed(a >= 1e7 ? 0 : 1) + "M";
-  if (a >= 1e4) return "$" + (v / 1e3).toFixed(0) + "K";
-  if (a >= 1e3) return "$" + (v / 1e3).toFixed(1) + "K";
-  if (a >= 100) return "$" + v.toFixed(0);
-  if (a >= 10) return "$" + v.toFixed(0);
-  if (a >= 1) return "$" + v.toFixed(a % 1 ? 1 : 0).replace(/\.0$/, "");
-  if (a === 0) return "$0";
-  return "$" + v.toFixed(2);
+  if (a === 0) return nf(moneyOpts({ minimumFractionDigits: 0, maximumFractionDigits: 0 })).format(0);
+  if (a >= 1000) return nf(moneyOpts({ notation: "compact", minimumFractionDigits: 0, maximumFractionDigits: a >= 1e4 && a < 1e6 ? 0 : 1 })).format(v);
+  const digits = ZERO_DECIMALS.has(S.fx.code) || a >= 10 ? 0 : a >= 1 ? 1 : 2;
+  return nf(moneyOpts({ minimumFractionDigits: 0, maximumFractionDigits: digits })).format(v);
 }
 function fmtTok(n) {
   const a = Math.abs(n);
@@ -740,6 +886,8 @@ const S = {
   projLimit: 8,
   ratesAll: false,
   hoverIdx: -1,
+  currency: typeof saved.currency === "string" ? saved.currency : "USD",
+  fx: { code: "USD", rate: 1, date: null, stale: false },   // what the numbers are currently shown in
 };
 // URL parameters override saved settings, so any view can be bookmarked:
 //   ?range=all|today|7d|30d|90d|mtd|lastmonth|ytd  or  ?from=2026-09-01&to=2026-09-15
@@ -759,19 +907,21 @@ const S = {
   pick("theme", ["system", "light", "dark"]);
 })();
 function persist() {
-  store.set("spendlight.state", { range: S.range, gran: S.gran, metric: S.metric, breakdown: S.breakdown, mode: S.mode, theme: S.theme });
+  store.set("spendlight.state", { range: S.range, gran: S.gran, metric: S.metric, breakdown: S.breakdown, mode: S.mode, theme: S.theme, currency: S.currency });
 }
 
-/* Record layout from the server (see spendlight_ui.py), plus two derived columns. */
+/* Record layout from the server (see spendlight_ui.py), plus derived columns:
+   cost/tok (totals), and usd (18-23: the server's USD costs, kept so currency can change). */
 const R = { t: 0, m: 1, p: 2, s: 3, in: 4, cw: 5, cr: 6, out: 7, web: 8,
-            cIn: 9, cCw: 10, cCr: 11, cOut: 12, cWeb: 13, cNo: 14, fast: 15, cost: 16, tok: 17 };
+            cIn: 9, cCw: 10, cCr: 11, cOut: 12, cWeb: 13, cNo: 14, fast: 15, cost: 16, tok: 17, usd: 18 };
+const COST_COLS = [R.cIn, R.cCw, R.cCr, R.cOut, R.cWeb, R.cNo];
 
 const TOKEN_TYPES = [
   { key: "output",     label: "Output",      tok: R.out, cost: R.cOut, color: "var(--s1)", note: "Text, tool calls and thinking the model writes" },
   { key: "cacheRead",  label: "Cache read",  tok: R.cr,  cost: R.cCr,  color: "var(--s2)", note: "Context re-read from the prompt cache (cheap)" },
   { key: "cacheWrite", label: "Cache write", tok: R.cw,  cost: R.cCw,  color: "var(--s3)", note: "New context written into the prompt cache" },
   { key: "input",      label: "Input",       tok: R.in,  cost: R.cIn,  color: "var(--s4)", note: "Uncached input tokens" },
-  { key: "web",        label: "Web search",  tok: null,  cost: R.cWeb, color: "var(--s5)", note: "Server-side web searches ($10 / 1,000)" },
+  { key: "web",        label: "Web search",  tok: null,  cost: R.cWeb, color: "var(--s5)", note: "Server-side web searches (10 USD per 1,000)" },
 ];
 
 /* =========================================================================
@@ -779,21 +929,38 @@ const TOKEN_TYPES = [
    ========================================================================= */
 function prepare(d) {
   for (const r of d.records) {
-    r[R.cost] = r[R.cIn] + r[R.cCw] + r[R.cCr] + r[R.cOut] + r[R.cWeb];
+    COST_COLS.forEach((c, i) => { r[R.usd + i] = r[c]; });   // the server's USD costs
     r[R.tok] = r[R.in] + r[R.cw] + r[R.cr] + r[R.out];
   }
+  applyFx(d);
   // All-time totals decide the fixed color of each entity, so filtering never repaints survivors.
   const mCost = new Array(d.models.length).fill(0);
   const pCost = new Array(d.projects.length).fill(0);
-  for (const r of d.records) { mCost[r[R.m]] += r[R.cost]; pCost[r[R.p]] += r[R.cost]; }
-  d.modelCost = mCost;
-  d.projectCost = pCost;
+  for (const r of d.records) { mCost[r[R.m]] += r[R.usd + 6]; pCost[r[R.p]] += r[R.usd + 6]; }
   d.modelOrder = mCost.map((c, i) => i).sort((a, b) => mCost[b] - mCost[a]);
   d.projectOrder = pCost.map((c, i) => i).sort((a, b) => pCost[b] - pCost[a]);
   d.modelSlot = assignSlots(d.modelOrder, d.models.length);
   d.projectSlot = assignSlots(d.projectOrder, d.projects.length);
   d.sessionIndex = new Map(d.sessions.map((s, i) => [s.id, i]));
   return d;
+}
+
+/* Puts every cost into the display currency (S.fx), from the kept USD values. Colours and
+   orderings don't change: they're based on USD totals, and conversion is proportional. */
+function applyFx(d = S.data) {
+  if (!d) return;
+  const k = S.fx.rate;
+  for (const r of d.records) {
+    let usdTotal = 0;
+    COST_COLS.forEach((c, i) => { r[c] = r[R.usd + i] * k; if (i < 5) usdTotal += r[R.usd + i]; });
+    r[R.usd + 6] = usdTotal;
+    r[R.cost] = usdTotal * k;
+  }
+  const mCost = new Array(d.models.length).fill(0);
+  const pCost = new Array(d.projects.length).fill(0);
+  for (const r of d.records) { mCost[r[R.m]] += r[R.cost]; pCost[r[R.p]] += r[R.cost]; }
+  d.modelCost = mCost;
+  d.projectCost = pCost;
 }
 function assignSlots(order, n) {
   // <= 8 entities: one slot each. More: the top 7 keep a slot, the tail folds into "Other" (0).
@@ -1071,11 +1238,20 @@ function renderHero(recs, prev, from, to, label, agg) {
   $("#hero-range").textContent = `${label} · ${describeSpan(from, to)}`;
   const hv = $("#hero-value");
   hv.replaceChildren();
-  const str = fmtUSD(cost);
-  const dot = str.lastIndexOf(".");
-  if (dot > 0 && cost >= 0.01) {
-    hv.append(document.createTextNode(str.slice(0, dot)), h("span", "cents", str.slice(dot)));
-  } else hv.textContent = str;
+  // The fraction (and any symbol after it) is set smaller: $631.21, 202 136 Ft.
+  const parts = cost >= 0.01 ? nf(moneyOpts()).formatToParts(cost) : null;
+  const cut = parts ? parts.findIndex(p => p.type === "decimal") : -1;
+  if (cut > 0) {
+    const text = ps => ps.map(p => p.value).join("");
+    hv.append(document.createTextNode(text(parts.slice(0, cut))), h("span", "cents", text(parts.slice(cut))));
+  } else hv.textContent = fmtMoney(cost);
+
+  const fx = $("#fx-note");
+  fx.hidden = S.fx.code === "USD";
+  if (!fx.hidden) {
+    const when = S.fx.date ? dfDayY.format(parseISODate(S.fx.date)) : "";
+    fx.textContent = `1 USD = ${nf({ maximumFractionDigits: 4 }).format(S.fx.rate)} ${S.fx.code} · ECB reference rate${when ? " of " + when : ""}${S.fx.stale ? " (offline, last known)" : ""}`;
+  }
 
   const del = $("#hero-delta");
   del.replaceChildren();
@@ -1088,7 +1264,7 @@ function renderHero(recs, prev, from, to, label, agg) {
       const ch = (cost - pc) / pc;
       const up = ch >= 0;
       del.classList.add(up ? "up" : "down");
-      del.append(h("b", null, `${up ? "▲" : "▼"} ${fmtPct(Math.abs(ch))}`), h("span", null, `vs ${per} (${fmtUSD(pc)})`));
+      del.append(h("b", null, `${up ? "▲" : "▼"} ${fmtPct(Math.abs(ch))}`), h("span", null, `vs ${per} (${fmtMoney(pc)})`));
     } else {
       del.append(h("span", null, `No spend in the ${per}`));
     }
@@ -1148,10 +1324,10 @@ function renderTiles(recs, from, to) {
   const tiles = [
     { icon: "tokens", label: "Tokens processed", value: fmtTok(tok), sub: `${fmtTok(out)} output · ${fmtTok(inAll)} input`, title: int.format(tok) + " tokens" },
     { icon: "calls", label: "API calls", value: int.format(recs.length), sub: `across ${int.format(sessions.size)} session${sessions.size === 1 ? "" : "s"}` },
-    { icon: "day", label: "Per active day", value: fmtUSD(days.size ? cost / days.size : 0), sub: `${days.size} active day${days.size === 1 ? "" : "s"} in range` },
+    { icon: "day", label: "Per active day", value: fmtMoney(days.size ? cost / days.size : 0), sub: `${days.size} active day${days.size === 1 ? "" : "s"} in range` },
     { icon: "cache", label: "Cache hit rate", value: fmtPct(hit, 1), sub: "of input tokens read from cache", meter: hit },
-    { icon: "saved", label: "Saved by caching", value: fmtUSD(saved), sub: noCache > 0 && cost > 0 ? `${(noCache / cost).toFixed(1)}× cheaper than ${fmtUSDc(noCache)} uncached` : "vs. no prompt caching" },
-    { icon: "pace", label: "Monthly pace", value: fmtUSD(pace), sub: "projected from this range's daily rate" },
+    { icon: "saved", label: "Saved by caching", value: fmtMoney(saved), sub: noCache > 0 && cost > 0 ? `${(noCache / cost).toFixed(1)}× cheaper than ${fmtMoneyC(noCache)} uncached` : "vs. no prompt caching" },
+    { icon: "pace", label: "Monthly pace", value: fmtMoney(pace), sub: "projected from this range's daily rate" },
   ];
   const host = $("#tiles");
   host.replaceChildren();
@@ -1199,13 +1375,13 @@ function renderMain() {
   let sub = `${GRAN_ADJ[agg.g]}${agg.forced ? " (too many points for the finer grouping)" : ""} · by ${byLabel}`;
   let peak = null;
   for (const b of agg.buckets) if (!peak || b.total > peak.total) peak = b;
-  if (peak && peak.total > 0 && S.mode === "bars") sub += ` · peak ${bucketTitle(peak, agg.g)}: ${isCost ? fmtUSD(peak.total) : fmtTok(peak.total) + " tokens"}`;
+  if (peak && peak.total > 0 && S.mode === "bars") sub += ` · peak ${bucketTitle(peak, agg.g)}: ${isCost ? fmtMoney(peak.total) : fmtTok(peak.total) + " tokens"}`;
   $("#main-sub").textContent = sub;
 
   // Legend: always present for >= 2 series.
   const lg = $("#main-legend");
   lg.replaceChildren();
-  const fmtV = isCost ? fmtUSD : v => fmtTok(v);
+  const fmtV = isCost ? fmtMoney : v => fmtTok(v);
   if (agg.series.length > 1) {
     agg.series.forEach((s, k) => {
       if (!agg.totals[k]) return;
@@ -1239,7 +1415,7 @@ function emptyState(title, sub) {
 
 function renderMainTable(host, agg) {
   const isCost = S.metric === "cost";
-  const fmtV = isCost ? fmtUSD : v => int.format(Math.round(v));
+  const fmtV = isCost ? fmtMoney : v => int.format(Math.round(v));
   const wrap = h("div", "table-wrap");
   const t = h("table");
   const thead = h("thead"), tr = h("tr");
@@ -1303,8 +1479,8 @@ function drawMainChart(host, agg) {
     for (const b of bs) maxV = Math.max(maxV, b.total);
   }
   const { top, ticks } = niceTicks(maxV * (cumulative ? 1.02 : 1.08), 4);
-  const fmtAxis = isCost ? fmtUSDc : fmtTok;
-  const fmtV = isCost ? fmtUSD : v => fmtTok(v) + " tokens";
+  const fmtAxis = isCost ? fmtMoneyC : fmtTok;
+  const fmtV = isCost ? fmtMoney : v => fmtTok(v) + " tokens";
 
   const yLabelW = Math.max(...ticks.map(t => fmtAxis(t).length)) * 6.6 + 12;
   const M = { l: Math.ceil(yLabelW), r: cumulative ? 16 : 8, t: 16, b: 30 };
@@ -1362,7 +1538,7 @@ function drawMainChart(host, agg) {
     // Direct label on the peak only.
     let pi = 0; bs.forEach((b, i) => { if (b.total > bs[pi].total) pi = i; });
     if (bs[pi].total > 0) {
-      const txt = isCost ? fmtUSDc(bs[pi].total) : fmtTok(bs[pi].total);
+      const txt = isCost ? fmtMoneyC(bs[pi].total) : fmtTok(bs[pi].total);
       const lx = Math.min(Math.max(cx(pi), M.l + 20), W - M.r - 20);
       const lbl = sv("text", { x: lx, y: y(bs[pi].total) - 7, "text-anchor": "middle", class: "label-text" }, svg);
       lbl.textContent = txt;
@@ -1389,7 +1565,7 @@ function drawMainChart(host, agg) {
     const dot = sv("circle", { cx: cx(n - 1), cy: y(endV), r: 4, "stroke-width": 2 }, marks);
     dot.style.fill = mainColor; dot.style.stroke = "var(--surface)";
     const lbl = sv("text", { x: cx(n - 1) - 8, y: y(endV) - 10, "text-anchor": "end", class: "label-text" }, svg);
-    lbl.textContent = (showTotal ? "Total " : "") + (isCost ? fmtUSD(endV) : fmtTok(endV));
+    lbl.textContent = (showTotal ? "Total " : "") + (isCost ? fmtMoney(endV) : fmtTok(endV));
   }
 
   // X ticks — on hourly charts snap to clock-friendly steps so midnights (dates) always get a label.
@@ -1450,15 +1626,15 @@ function drawMainChart(host, agg) {
       tipTitle(t, bucketTitle(b, agg.g));
       const vals = cumulative ? cum[i] : b.vals;
       const totalV = cumulative ? cum[i][ns] : b.total;
-      if (ns > 1) tipRow(t, null, isCost ? fmtUSD(totalV) : fmtTok(totalV), cumulative ? "Running total" : "Total");
+      if (ns > 1) tipRow(t, null, isCost ? fmtMoney(totalV) : fmtTok(totalV), cumulative ? "Running total" : "Total");
       // Top of the stack first, matching the visual order.
       for (let k = ns - 1; k >= 0; k--) {
         if (!agg.totals[k]) continue;
-        tipRow(t, agg.series[k].color, isCost ? fmtUSD(vals[k]) : fmtTok(vals[k]), agg.series[k].label);
+        tipRow(t, agg.series[k].color, isCost ? fmtMoney(vals[k]) : fmtTok(vals[k]), agg.series[k].label);
       }
       const extra = [];
       if (b.calls) extra.push(`${int.format(b.calls)} call${b.calls === 1 ? "" : "s"}`);
-      if (!isCost && b.cost) extra.push(fmtUSD(b.cost));
+      if (!isCost && b.cost) extra.push(fmtMoney(b.cost));
       if (agg.g !== "hour" && b.calls) extra.push("click to drill in");
       if (extra.length) tipFoot(t, extra.join(" · "));
     }, clientX, clientY);
@@ -1578,7 +1754,7 @@ function renderModels(recs) {
       color: modelColor(mi),
       name: modelName(d.models[mi]),
       sub: `${fmtTok(x.tok)} tokens · ${int.format(x.calls)} calls`,
-      value: fmtUSD(x.cost),
+      value: fmtMoney(x.cost),
       valueSub: fmtPct(x.cost / total) + " of spend",
       share: x.cost / max,
       selected: S.models.size === 1 && S.models.has(mi),
@@ -1608,7 +1784,7 @@ function renderProjects(recs) {
       color: "var(--s1)",   // one measure, one color — magnitude is carried by length
       name: d.projects[pi].label,
       sub: `${ns} session${ns === 1 ? "" : "s"} · ${fmtTok(x.tok)} tokens`,
-      value: fmtUSD(x.cost),
+      value: fmtMoney(x.cost),
       valueSub: fmtPct(x.cost / total) + " of spend",
       share: x.cost / max,
       selected: S.projects.size === 1 && S.projects.has(pi),
@@ -1653,7 +1829,7 @@ function renderTokens(recs) {
   host.appendChild(ins);
 
   const grid = h("div", "stack100");
-  for (const [lab, key, tot, fmt] of [["Tokens", "tokens", totTok, v => fmtTok(v) + " tokens"], ["Cost", "dollars", totCost, fmtUSD]]) {
+  for (const [lab, key, tot, fmt] of [["Tokens", "tokens", totTok, v => fmtTok(v) + " tokens"], ["Cost", "dollars", totCost, fmtMoney]]) {
     grid.appendChild(h("div", "lab", lab));
     const bar = h("div", "bar");
     bar.setAttribute("role", "img");
@@ -1669,7 +1845,7 @@ function renderTokens(recs) {
         tipTitle(t, s.label);
         tipRow(t, s.color, fmtPct(s[key] / tot, 1), `of ${lab.toLowerCase()}`);
         tipKV(t, "Tokens", fmtTok(s.tokens));
-        tipKV(t, "Cost", fmtUSD(s.dollars));
+        tipKV(t, "Cost", fmtMoney(s.dollars));
         tipFoot(t, s.note);
       }, x, y);
       seg.onpointermove = e => show(e.clientX, e.clientY);
@@ -1686,7 +1862,7 @@ function renderTokens(recs) {
   wrap.style.maxHeight = "none";
   const t = h("table");
   const hr = h("tr");
-  for (const [c, cls] of [["Type", ""], ["Tokens", "r"], ["% tokens", "r"], ["Cost", "r"], ["% cost", "r"], ["$/MTok", "r"]]) hr.append(h("th", cls, c));
+  for (const [c, cls] of [["Type", ""], ["Tokens", "r"], ["% tokens", "r"], ["Cost", "r"], ["% cost", "r"], ["Per MTok", "r"]]) hr.append(h("th", cls, c));
   const thead = h("thead"); thead.appendChild(hr);
   const tb = h("tbody");
   for (const s of used) {
@@ -1698,9 +1874,9 @@ function renderTokens(recs) {
     tr.append(name,
       h("td", "r", s.tok == null ? "—" : fmtTok(s.tokens)),
       h("td", "r", s.tok == null ? "—" : fmtPct(s.tokens / totTok, 1)),
-      h("td", "r", fmtUSD(s.dollars)),
+      h("td", "r", fmtMoney(s.dollars)),
       h("td", "r", fmtPct(s.dollars / totCost, 1)),
-      h("td", "r", s.tok == null || !s.tokens ? "—" : "$" + (s.dollars / s.tokens * 1e6).toFixed(2)));
+      h("td", "r", s.tok == null || !s.tokens ? "—" : fmtMoney(s.dollars / s.tokens * 1e6)));
     tb.appendChild(tr);
   }
   t.append(thead, tb);
@@ -1735,7 +1911,7 @@ function renderHeatmap(recs) {
   grid.setAttribute("role", "grid");
   grid.appendChild(h("div"));
   for (let hr = 0; hr < 24; hr++) grid.appendChild(h("div", "cl", hr % 3 === 0 ? String(hr).padStart(2, "0") : ""));
-  const fmtV = v => (isCost ? fmtUSD(v) : fmtTok(v) + " tokens");
+  const fmtV = v => (isCost ? fmtMoney(v) : fmtTok(v) + " tokens");
   cells.forEach((row, di) => {
     grid.appendChild(h("div", "rl", DOW[di]));
     row.forEach((c, hr) => {
@@ -1749,7 +1925,7 @@ function renderHeatmap(recs) {
       const show = (x, y) => showTip(t => {
         tipTitle(t, `${DOW[di]} · ${String(hr).padStart(2, "0")}:00–${String((hr + 1) % 24).padStart(2, "0")}:00`);
         tipRow(t, c.v > 0 ? `var(--q${Math.min(6, 1 + Math.floor(Math.sqrt(c.v / (max || 1)) * 6))})` : null, fmtV(c.v), isCost ? "spend" : "");
-        tipFoot(t, `${int.format(c.calls)} call${c.calls === 1 ? "" : "s"}${!isCost && c.cost ? " · " + fmtUSD(c.cost) : ""} · summed over the range`);
+        tipFoot(t, `${int.format(c.calls)} call${c.calls === 1 ? "" : "s"}${!isCost && c.cost ? " · " + fmtMoney(c.cost) : ""} · summed over the range`);
       }, x, y);
       cell.onpointermove = e => show(e.clientX, e.clientY);
       cell.onpointerleave = hideTip;
@@ -1793,7 +1969,7 @@ function renderHeatmap(recs) {
     }
     if (hr === topHour && v > 0) {
       const t = sv("text", { x: x + barW / 2, y: M.t + ph - bh - 6, "text-anchor": "middle", class: "label-text" }, svg);
-      t.textContent = isCost ? fmtUSDc(v) : fmtTok(v);
+      t.textContent = isCost ? fmtMoneyC(v) : fmtTok(v);
     }
     if (hr % 3 === 0) {
       const t = sv("text", { x: x + barW / 2, y: H - 5, "text-anchor": "middle", class: "axis-text" }, svg);
@@ -1893,7 +2069,7 @@ function renderSessions(recs) {
     const tdK = h("td", "r", fmtTok(s.tok));
     const tdX = h("td", "r");
     const cb = h("span", "costbar"), cbi = h("i"); cbi.style.width = (s.cost / maxCost * 100).toFixed(1) + "%"; cb.appendChild(cbi);
-    tdX.append(cb, h("b", null, fmtUSD(s.cost)));
+    tdX.append(cb, h("b", null, fmtMoney(s.cost)));
     tr.append(tdT, tdP, tdS, tdD, tdM, tdC, tdK, tdX);
     const pick = () => { S.session = S.session === s.i ? null : s.i; window.scrollTo({ top: 0, behavior: "smooth" }); render(); };
     tr.onclick = pick;
@@ -1917,7 +2093,14 @@ function renderRates() {
   const host = $("#rates");
   const rows = S.data.prices.filter(p => S.ratesAll || p.used);
   $("#rates-toggle").textContent = S.ratesAll ? "Show models you've used" : "Show all models";
-  const m = x => "$" + (x < 1 ? x.toFixed(3).replace(/0$/, "") : x.toFixed(2));
+  // List prices are in USD; shown in the display currency like everything else.
+  const m = x => {
+    const v = x * S.fx.rate;
+    const d = ZERO_DECIMALS.has(S.fx.code) ? (v < 10 ? 1 : 0) : v < 1 ? 3 : 2;
+    return nf(moneyOpts({ minimumFractionDigits: Math.min(d, 2), maximumFractionDigits: d })).format(v);
+  };
+  $("#price-unit").textContent = S.fx.code === "USD" ? "USD per million tokens"
+    : `${S.fx.code} per million tokens (converted from USD list prices)`;
   const wrap = h("div", "table-wrap");
   wrap.style.maxHeight = "none";
   const t = h("table");
@@ -1937,7 +2120,7 @@ function renderRates() {
   }
   t.append(thead, tb);
   wrap.appendChild(t);
-  host.replaceChildren(wrap, h("p", "card-sub", `Web search: $${S.data.webSearchPer1k} per 1,000 searches. Model ids match by prefix (longest wins).`));
+  host.replaceChildren(wrap, h("p", "card-sub", `Web search: ${fmtMoney(S.data.webSearchPer1k * S.fx.rate)} per 1,000 searches. Model ids match by prefix (longest wins).`));
 }
 $("#rates-toggle").onclick = () => { S.ratesAll = !S.ratesAll; renderRates(); };
 
@@ -2056,7 +2239,7 @@ popover($("#models-btn"), $("#models-panel"), panel => {
   const d = S.data;
   multiSelect(panel, {
     title: "Models · all-time spend",
-    items: d.modelOrder.map(i => ({ idx: i, name: modelName(d.models[i]), sub: d.models[i], color: modelColor(i), val: fmtUSD(d.modelCost[i]) })),
+    items: d.modelOrder.map(i => ({ idx: i, name: modelName(d.models[i]), sub: d.models[i], color: modelColor(i), val: fmtMoney(d.modelCost[i]) })),
     selected: () => S.models,
     onChange: s => { S.models = s; render(); },
   });
@@ -2065,11 +2248,165 @@ popover($("#projects-btn"), $("#projects-panel"), panel => {
   const d = S.data;
   multiSelect(panel, {
     title: "Projects · all-time spend",
-    items: d.projectOrder.map(i => ({ idx: i, name: d.projects[i].label, sub: d.projects[i].path, color: "var(--s1)", val: fmtUSD(d.projectCost[i]) })),
+    items: d.projectOrder.map(i => ({ idx: i, name: d.projects[i].label, sub: d.projects[i].path, color: "var(--s1)", val: fmtMoney(d.projectCost[i]) })),
     selected: () => S.projects,
     onChange: s => { S.projects = s; render(); },
     searchable: d.projects.length > 8,
   });
+});
+
+/* =========================================================================
+   Currency
+   Costs are computed in USD (Anthropic's list prices). Other currencies use the European
+   Central Bank's daily reference rates, which the local server fetches only once you pick
+   something other than USD. Nothing about your usage is sent anywhere.
+   ========================================================================= */
+const CURRENCIES = [
+  ["USD", "United States Dollar", "us"], ["EUR", "Euro", "eu"], ["GBP", "British Pound", "gb"],
+  ["JPY", "Japanese Yen", "jp"], ["CHF", "Swiss Franc", "ch"], ["CAD", "Canadian Dollar", "ca"],
+  ["AUD", "Australian Dollar", "au"], ["NZD", "New Zealand Dollar", "nz"], ["CNY", "Chinese Yuan", "cn"],
+  ["HKD", "Hong Kong Dollar", "hk"], ["SGD", "Singapore Dollar", "sg"], ["KRW", "South Korean Won", "kr"],
+  ["INR", "Indian Rupee", "in"], ["IDR", "Indonesian Rupiah", "id"], ["MYR", "Malaysian Ringgit", "my"],
+  ["PHP", "Philippine Peso", "ph"], ["THB", "Thai Baht", "th"], ["ILS", "Israeli New Shekel", "il"],
+  ["TRY", "Turkish Lira", "tr"], ["ZAR", "South African Rand", "za"], ["BRL", "Brazilian Real", "br"],
+  ["MXN", "Mexican Peso", "mx"], ["SEK", "Swedish Krona", "se"], ["NOK", "Norwegian Krone", "no"],
+  ["DKK", "Danish Krone", "dk"], ["ISK", "Icelandic Króna", "is"], ["PLN", "Polish Złoty", "pl"],
+  ["CZK", "Czech Koruna", "cz"], ["HUF", "Hungarian Forint", "hu"], ["RON", "Romanian Leu", "ro"],
+].map(([code, name, flag]) => ({ code, name, flag }));
+const currencyInfo = code => CURRENCIES.find(c => c.code === code) || CURRENCIES[0];
+
+/* Flat flags on a 24×24 square (cropped like a square flag icon), drawn from shapes — no emoji. */
+const star = (cx, cy, r, fill, rot = 0, extra = "") => {
+  const pts = [];
+  for (let i = 0; i < 10; i++) {
+    const a = (rot - 90 + i * 36) * Math.PI / 180, rr = i % 2 ? r * 0.4 : r;
+    pts.push((cx + rr * Math.cos(a)).toFixed(2) + "," + (cy + rr * Math.sin(a)).toFixed(2));
+  }
+  return `<polygon points="${pts.join(" ")}" fill="${fill}"${extra}/>`;
+};
+const hBands = (...c) => c.map((f, i) => `<rect y="${(24 / c.length * i).toFixed(2)}" width="24" height="${(24 / c.length + .05).toFixed(2)}" fill="${f}"/>`).join("");
+const vBands = (...c) => c.map((f, i) => `<rect x="${(24 / c.length * i).toFixed(2)}" width="${(24 / c.length + .05).toFixed(2)}" height="24" fill="${f}"/>`).join("");
+const nordic = (bg, cross, inner) => `<rect width="24" height="24" fill="${bg}"/><rect x="6.5" width="5" height="24" fill="${cross}"/><rect y="9.5" width="24" height="5" fill="${cross}"/>` +
+  (inner ? `<rect x="7.75" width="2.5" height="24" fill="${inner}"/><rect y="10.75" width="24" height="2.5" fill="${inner}"/>` : "");
+const UNION = `<rect width="24" height="24" fill="#012169"/><path d="M0 0L24 24M24 0L0 24" stroke="#fff" stroke-width="4.8"/><path d="M0 0L24 24M24 0L0 24" stroke="#C8102E" stroke-width="1.6"/><path d="M12 0V24M0 12H24" stroke="#fff" stroke-width="8"/><path d="M12 0V24M0 12H24" stroke="#C8102E" stroke-width="4.8"/>`;
+const FLAGS = {
+  us: `<rect width="24" height="24" fill="#B22234"/>` + [1, 3, 5, 7, 9, 11].map(i => `<rect y="${(i * 24 / 13).toFixed(2)}" width="24" height="${(24 / 13).toFixed(2)}" fill="#fff"/>`).join("") +
+      `<rect width="12" height="12.92" fill="#3C3B6E"/><g fill="#fff">` +
+      [[2, 2], [6, 2], [10, 2], [4, 4.3], [8, 4.3], [2, 6.6], [6, 6.6], [10, 6.6], [4, 8.9], [8, 8.9], [2, 11.1], [6, 11.1], [10, 11.1]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r=".62"/>`).join("") + `</g>`,
+  eu: `<rect width="24" height="24" fill="#003399"/>` + Array.from({ length: 12 }, (_, k) => star(12 + 7 * Math.sin(k * Math.PI / 6), 12 - 7 * Math.cos(k * Math.PI / 6), 1.35, "#FFCC00")).join(""),
+  gb: UNION,
+  jp: `<rect width="24" height="24" fill="#fff"/><circle cx="12" cy="12" r="6.2" fill="#BC002D"/>`,
+  ch: `<rect width="24" height="24" fill="#DA291C"/><rect x="10" y="4.5" width="4" height="15" fill="#fff"/><rect x="4.5" y="10" width="15" height="4" fill="#fff"/>`,
+  ca: `<rect width="24" height="24" fill="#fff"/><rect width="5.5" height="24" fill="#D52B1E"/><rect x="18.5" width="5.5" height="24" fill="#D52B1E"/>` +
+      `<path fill="#D52B1E" d="M12 5.2l1.1 2 1.3-.4-.4 2.8 1.9-1.4.5 1.2 1.6-.3-.6 2.2.6.4-3 2.7.4 1.2-2.9-.4V18.4h-.9v-3.2l-2.9.4.4-1.2-3-2.7.6-.4-.6-2.2 1.6.3.5-1.2 1.9 1.4-.4-2.8 1.3.4z"/>`,
+  au: `<rect width="24" height="24" fill="#012169"/><svg width="12" height="12" viewBox="0 0 24 24">${UNION}</svg>` +
+      star(6, 18, 2.4, "#fff") + star(18, 5, 1.2, "#fff") + star(21.2, 10.2, 1.1, "#fff") + star(14.8, 11, 1.1, "#fff") + star(18, 19.6, 1.3, "#fff") + star(19.8, 14.6, .7, "#fff"),
+  nz: `<rect width="24" height="24" fill="#012169"/><svg width="12" height="12" viewBox="0 0 24 24">${UNION}</svg>` +
+      [[18.5, 5.5, 1.5], [21.3, 10.8, 1.3], [15.6, 11.8, 1.2], [18.5, 19.2, 1.7]].map(([x, y, r]) => star(x, y, r + .45, "#fff") + star(x, y, r, "#C8102E")).join(""),
+  cn: `<rect width="24" height="24" fill="#EE1C25"/>` + star(6, 6.5, 3.6, "#FFDE00") + star(11, 3, 1.15, "#FFDE00", 23) + star(13.2, 5.3, 1.15, "#FFDE00", 45) + star(13.2, 8.4, 1.15, "#FFDE00", 70) + star(11, 10.5, 1.15, "#FFDE00", 20),
+  hk: `<rect width="24" height="24" fill="#DE2910"/>` + Array.from({ length: 5 }, (_, k) => `<ellipse cx="12" cy="8.2" rx="2" ry="3.7" fill="#fff" transform="rotate(${k * 72 + 18} 12 12)"/>`).join("") + `<circle cx="12" cy="12" r=".9" fill="#DE2910"/>`,
+  sg: `<rect width="24" height="12" fill="#EF3340"/><rect y="12" width="24" height="12" fill="#fff"/><circle cx="5.6" cy="6" r="3.7" fill="#fff"/><circle cx="7" cy="6" r="3.4" fill="#EF3340"/>` +
+      [[9.2, 3.6], [11, 5.1], [10.3, 7.4], [8.1, 7.4], [7.4, 5.1]].map(([x, y]) => star(x, y, .8, "#fff")).join(""),
+  kr: `<rect width="24" height="24" fill="#fff"/><g transform="translate(12 12) rotate(-56.31)"><circle r="5" fill="#0047A0"/><path d="M0-5A2.5 2.5 0 0 1 0 0A2.5 2.5 0 0 0 0 5A5 5 0 0 1 0-5" fill="#CD2E3A"/></g>` +
+      [[-1, -1], [1, 1], [1, -1], [-1, 1]].map(([sx, sy]) => `<g transform="translate(${12 + sx * 8.2} ${12 + sy * 8.2}) rotate(${sx * sy > 0 ? 45 : -45})" stroke="#000" stroke-width=".7">` +
+        [-1.1, 0, 1.1].map(o => `<path d="M-1.8 ${o}h3.6"/>`).join("") + `</g>`).join(""),
+  in: hBands("#FF9933", "#fff", "#138808") + `<circle cx="12" cy="12" r="2.7" fill="none" stroke="#000080" stroke-width=".6"/><circle cx="12" cy="12" r=".6" fill="#000080"/>`,
+  id: hBands("#CE1126", "#fff"),
+  my: Array.from({ length: 14 }, (_, i) => `<rect y="${(i * 24 / 14).toFixed(2)}" width="24" height="${(24 / 14 + .05).toFixed(2)}" fill="${i % 2 ? "#fff" : "#CC0001"}"/>`).join("") +
+      `<rect width="13" height="13.7" fill="#010066"/><circle cx="5.4" cy="6.85" r="4.2" fill="#FC0"/><circle cx="6.5" cy="6.85" r="3.5" fill="#010066"/>` + star(10.1, 6.85, 2.3, "#FC0"),
+  ph: `<rect width="24" height="12" fill="#0038A8"/><rect y="12" width="24" height="12" fill="#CE1126"/><path d="M0 0L13 12 0 24z" fill="#fff"/><circle cx="4.6" cy="12" r="1.9" fill="#FCD116"/>` +
+      star(1.6, 3.3, .8, "#FCD116") + star(1.6, 20.7, .8, "#FCD116") + star(9.8, 12, .8, "#FCD116"),
+  th: `<rect width="24" height="24" fill="#A51931"/><rect y="4" width="24" height="16" fill="#F4F5F8"/><rect y="8" width="24" height="8" fill="#2D2A4A"/>`,
+  il: `<rect width="24" height="24" fill="#fff"/><rect y="3" width="24" height="2.6" fill="#0038B8"/><rect y="18.4" width="24" height="2.6" fill="#0038B8"/>` +
+      `<g fill="none" stroke="#0038B8" stroke-width=".9"><path d="M12 7.6l3.8 6.6H8.2z"/><path d="M12 16.4l3.8-6.6H8.2z"/></g>`,
+  tr: `<rect width="24" height="24" fill="#E30A17"/><circle cx="9.6" cy="12" r="5.2" fill="#fff"/><circle cx="10.9" cy="12" r="4.15" fill="#E30A17"/>` + star(15.6, 12, 2.2, "#fff", -90),
+  za: `<rect width="24" height="12" fill="#E03C31"/><rect y="12" width="24" height="12" fill="#001489"/>` +
+      `<path d="M0 2.6L10.2 10.2H24v3.6H10.2L0 21.4z" fill="#fff"/><path d="M0 4.8L9.5 11H24v2H9.5L0 19.2z" fill="#007749"/>` +
+      `<path d="M0 6.6L7.8 12 0 17.4z" fill="#FFB81C"/><path d="M0 8.2L5.6 12 0 15.8z" fill="#000"/>`,
+  br: `<rect width="24" height="24" fill="#009C3B"/><path d="M12 3.5L21.5 12 12 20.5 2.5 12z" fill="#FFDF00"/><circle cx="12" cy="12" r="4.6" fill="#002776"/>` +
+      `<path d="M7.6 11.2q4.6-1.8 8.8 1.4" stroke="#fff" stroke-width=".9" fill="none"/>`,
+  mx: vBands("#006847", "#fff", "#CE1126") + `<circle cx="12" cy="11.6" r="2.1" fill="#8C5A2B"/><path d="M9.6 13.4q2.4 1.9 4.8 0" stroke="#006847" stroke-width=".8" fill="none"/>`,
+  se: nordic("#006AA7", "#FECC00"),
+  no: nordic("#BA0C2F", "#fff", "#00205B"),
+  dk: nordic("#C8102E", "#fff"),
+  is: nordic("#02529C", "#fff", "#DC1E35"),
+  pl: hBands("#fff", "#DC143C"),
+  cz: `<rect width="24" height="24" fill="#D7141A"/><rect width="24" height="12" fill="#fff"/><path d="M0 0L13 12 0 24z" fill="#11457E"/>`,
+  hu: hBands("#CD2A3E", "#fff", "#436F4D"),
+  ro: vBands("#002B7F", "#FCD116", "#CE1126"),
+};
+function flagEl(code) {
+  const s = h("span", "flag");
+  s.setAttribute("aria-hidden", "true");
+  s.innerHTML = `<svg viewBox="0 0 24 24" preserveAspectRatio="xMidYMid slice">${FLAGS[currencyInfo(code).flag] || ""}</svg>`;   // static, trusted markup
+  return s;
+}
+function renderCurrencyButton(busy) {
+  const c = currencyInfo(busy || S.fx.code);
+  $("#currency-flag").replaceWith(Object.assign(flagEl(c.code), { id: "currency-flag" }));
+  $("#currency-label").textContent = busy ? "Getting exchange rates…" : `${c.name} (${c.code})`;
+  $("#currency-btn").classList.toggle("busy", !!busy);
+  $("#currency-btn").classList.toggle("on", S.fx.code !== "USD");
+}
+
+let ratesPromise = null;
+function getRates() {
+  if (!ratesPromise) {
+    ratesPromise = fetch("/api/rates", { cache: "no-store" })
+      .then(r => r.json().then(j => { if (!r.ok || j.error) throw new Error(j.error || r.statusText); return j; }))
+      .catch(e => { ratesPromise = null; throw e; });   // allow a retry later
+  }
+  return ratesPromise;
+}
+async function setCurrency(code) {
+  if (code === "USD") {
+    S.currency = "USD"; S.fx = { code: "USD", rate: 1, date: null, stale: false };
+    persist(); applyFx(); renderCurrencyButton(); render();
+    return;
+  }
+  renderCurrencyButton(code);
+  try {
+    const r = await getRates();
+    if (!r.rates[code] || !r.rates.USD) throw new Error(`the ECB doesn't publish a rate for ${code}`);
+    S.currency = code;
+    S.fx = { code, rate: r.rates[code] / r.rates.USD, date: r.date, stale: !!r.stale };
+    persist(); applyFx(); render();
+  } catch (e) {
+    $("#banners").prepend(banner("warn", b => b.append(document.createTextNode(
+      `Couldn't switch to ${code}: ${e.message}. Showing US dollars.`))));
+  } finally {
+    renderCurrencyButton();
+  }
+}
+popover($("#currency-btn"), $("#currency-panel"), panel => {
+  panel.replaceChildren();
+  const search = h("input", "panel-search");
+  search.type = "search"; search.placeholder = "Search currencies…";
+  const list = h("div", "panel-list");
+  const draw = () => {
+    list.replaceChildren();
+    const q = search.value.trim().toLowerCase();
+    for (const c of CURRENCIES) {
+      if (q && !(c.name + " " + c.code).toLowerCase().includes(q)) continue;
+      const b = h("button", "opt");
+      b.setAttribute("role", "menuitemradio");
+      b.setAttribute("aria-checked", String(S.fx.code === c.code));
+      b.append(flagEl(c.code), h("span", null, `${c.name} (${c.code})`));
+      const tick = h("span", "code");
+      if (S.fx.code === c.code) tick.innerHTML = CHECK; else tick.textContent = c.code === "USD" ? "list prices" : "";
+      b.append(tick);
+      b.onclick = () => { closePops(); if (c.code !== S.fx.code) setCurrency(c.code); };
+      list.appendChild(b);
+    }
+    if (!list.children.length) list.append(h("div", "note", "No currency matches."));
+  };
+  search.oninput = draw;
+  draw();
+  const note = h("div", "note");
+  note.textContent = S.fx.date
+    ? `Converted with the European Central Bank's reference rate of ${dfDayY.format(parseISODate(S.fx.date))}. Your usage never leaves this computer.`
+    : "Other currencies use the European Central Bank's daily reference rates, fetched when you pick one. Your usage never leaves this computer.";
+  panel.append(search, list, note);
 });
 
 $("#reset").onclick = () => {
@@ -2096,9 +2433,50 @@ function applyTheme() {
   const b = $("#theme");
   b.innerHTML = THEME_ICONS[S.theme];
   b.title = `Theme: ${S.theme} (click to change)`;
-  // When hosted in the Windows app, let the window match the theme (title bar colour).
+  // When hosted in the Windows app, let the window frame match (border, resize strip colour).
   const dark = S.theme === "dark" || (S.theme === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
-  try { window.chrome?.webview?.postMessage({ theme: dark ? "dark" : "light" }); } catch {}
+  const bg = getComputedStyle(document.documentElement).getPropertyValue("--page").trim();
+  try { window.chrome?.webview?.postMessage({ theme: dark ? "dark" : "light", bg }); } catch {}
+}
+
+/* =========================================================================
+   Title bar (Windows app only)
+   The app hides Windows' title bar; this one moves, maximizes and closes the window by
+   messaging it. Double-click toggles maximize; right-click shows the window menu.
+   ========================================================================= */
+const HOST = window.chrome && window.chrome.webview;
+if (HOST) {
+  document.documentElement.classList.add("framed");
+  const bar = $("#titlebar");
+  bar.hidden = false;
+  // The header's status and buttons move up into the title bar; the header itself hides.
+  $("#tb-actions").append($("#status"), $("#refresh"), $("#theme"));
+  const win = action => HOST.postMessage({ window: action });
+  bar.querySelectorAll("[data-win]").forEach(b => { b.onclick = () => win(b.dataset.win); });
+
+  let lastDown = 0, lastX = 0, lastY = 0;
+  bar.addEventListener("mousedown", e => {
+    if (e.button !== 0 || e.target.closest("button, a, input")) return;
+    const now = performance.now();
+    const dbl = now - lastDown < 450 && Math.abs(e.screenX - lastX) < 5 && Math.abs(e.screenY - lastY) < 5;
+    lastDown = dbl ? 0 : now; lastX = e.screenX; lastY = e.screenY;
+    e.preventDefault();
+    win(dbl ? "maximize" : "drag");   // dragging hands the mouse to Windows (snap, shake, etc.)
+  });
+  bar.addEventListener("contextmenu", e => {
+    if (e.target.closest("button")) return;
+    e.preventDefault();
+    win("menu");
+  });
+  HOST.addEventListener("message", e => {
+    const m = e.data;
+    if (!m || m.type !== "window") return;
+    document.documentElement.classList.toggle("maximized", !!m.maximized);
+    document.documentElement.classList.toggle("inactive", !m.active);
+    $("#wbtn-max").title = m.maximized ? "Restore down" : "Maximize";
+  });
+  addEventListener("scroll", () => bar.classList.toggle("scrolled", scrollY > 4), { passive: true });
+  win("hello");
 }
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if (S.theme === "system") applyTheme(); });
 $("#theme").onclick = () => {
@@ -2124,6 +2502,71 @@ function banner(kind, build) {
   b.appendChild(body);
   return b;
 }
+/* Skeleton: shapes that mirror each section until the first data arrives. */
+function renderSkeleton() {
+  const sk = (w, hgt, cls = "") => { const e = h("span", "skel " + cls); e.style.width = w; e.style.height = hgt; return e; };
+  const line = (w, mt = 0) => { const e = sk(w, "12px", "skel-line"); if (mt) e.style.marginTop = mt + "px"; return e; };
+  // Segmented controls are built from data-dependent state; hold their size meanwhile.
+  $("#gran-seg").replaceChildren(sk("228px", "26px"));
+  for (const [id, w] of [["#metric-seg", 104], ["#breakdown-seg", 190], ["#mode-seg", 132], ["#view-seg", 104]])
+    $(id).replaceChildren(sk(w + "px", "26px"));
+  $("#hero-range").replaceChildren(line("62%", 4));
+  $("#hero-value").replaceChildren(sk("200px", "52px", "inline"));
+  $("#hero-delta").replaceChildren(sk("220px", "12px", "inline"));
+  const spark = $("#spark");
+  spark.replaceChildren();
+  spark.insertAdjacentElement("afterend", Object.assign(sk("100%", "56px"), { id: "spark-skel" }));
+  spark.style.display = "none";
+  const tiles = $("#tiles");
+  tiles.replaceChildren();
+  for (let i = 0; i < 6; i++) {
+    const c = h("div", "card tile");
+    c.append(line("55%"), sk("60%", "26px"), line("75%"));
+    c.children[1].style.margin = "8px 0 6px";
+    tiles.appendChild(c);
+  }
+  $("#main-legend").replaceChildren(...[70, 90, 80, 76].map(w => sk(w + "px", "14px", "inline")));
+  const cols = h("div", "skel-cols");
+  // A gentle made-up rhythm, so it reads as "a chart is coming" rather than as data.
+  [18, 26, 22, 34, 30, 44, 38, 52, 46, 60, 55, 68, 62, 74, 66, 58, 70, 82, 76, 64, 72, 86, 80, 70, 78, 90, 84, 74, 88, 94]
+    .forEach(p => { const b = h("span", "skel"); b.style.height = p + "%"; cols.appendChild(b); });
+  $("#main-chart").replaceChildren(cols);
+  for (const id of ["#models-rank", "#projects-rank"]) {
+    const host = $(id);
+    host.replaceChildren();
+    for (let i = 0; i < 4; i++) {
+      const row = h("div", "skel-row");
+      const bar = sk((88 - i * 18) + "%", "12px");
+      row.append(line((70 - i * 8) + "%"), bar, line("100%"));
+      host.appendChild(row);
+    }
+  }
+  $("#tokens-card").replaceChildren(sk("100%", "38px"), line("0", 14), sk("100%", "24px"), line("0", 10), sk("100%", "24px"), line("0", 18),
+    ...[0, 1, 2, 3].map(() => { const e = line("100%"); e.style.margin = "10px 0"; return e; }));
+  const heat = h("div", "heat");
+  heat.append(h("div"));
+  for (let c = 0; c < 24; c++) heat.append(h("div", "cl", ""));
+  for (let r = 0; r < 7; r++) {
+    heat.append(sk("22px", "10px"));
+    for (let c = 0; c < 24; c++) heat.append(h("span", "skel cell"));
+  }
+  $("#heatmap").replaceChildren(heat);
+  $("#sessions").replaceChildren(...Array.from({ length: 6 }, (_, i) => {
+    const row = h("div", "skel-row");
+    row.style.gridTemplateColumns = "2fr 1fr 1fr 90px";
+    row.append(line((80 - i * 6) + "%"), line("60%"), line("50%"), line("100%"));
+    return row;
+  }));
+  $("#rates").replaceChildren(...[0, 1, 2].map(() => { const e = line("100%"); e.style.margin = "12px 0"; return e; }));
+}
+function endSkeleton() {
+  if (!document.body.classList.contains("loading")) return;
+  document.body.classList.remove("loading");
+  $("#spark").style.display = "";
+  const s = $("#spark-skel");
+  if (s) s.remove();
+}
+
 async function load() {
   if (loading) return;
   loading = true;
@@ -2154,17 +2597,27 @@ async function load() {
       bh.appendChild(banner("warn", b => {
         b.append(document.createTextNode("No price known for "));
         unpriced.forEach(([m, n], i) => { if (i) b.append(document.createTextNode(", ")); b.append(h("code", null, m)); b.append(document.createTextNode(` (${n} calls)`)); });
-        b.append(document.createTextNode(" — counted as $0. Add it to "), h("code", null, "PRICES"), document.createTextNode(` in ${d.priceSource || "spendlight.py"}.`));
+        b.append(document.createTextNode(" — counted as 0. Add it to "), h("code", null, "PRICES"), document.createTextNode(` in ${d.priceSource || "spendlight.py"}.`));
       }));
     }
     $("#price-source").textContent = d.priceSource || "spendlight.py";
     $("#subtitle").textContent = `Estimated from ${d.dir} at Anthropic API list prices`;
     $("#subtitle").title = d.dir;
+    $("#tb-sub").textContent = `Estimated from ${d.dir}`;
+    $("#tb-sub").title = d.dir;
     $("#foot-meta").textContent = `${int.format(d.records.length)} API calls · ${d.files} log files · parsed in ${d.parseSeconds}s`;
     setStatus("ok", "Updated " + dfTimeS.format(new Date()));
+    endSkeleton();
     render();
+    // A saved currency other than USD: get the rates once the numbers are on screen.
+    if (S.currency !== S.fx.code && !$("#currency-btn").classList.contains("busy")) setCurrency(S.currency);
   } catch (err) {
     setStatus("error", "Couldn't load data");
+    if (!S.data) {   // nothing to show: swap the skeleton for empty states
+      endSkeleton();
+      for (const id of ["#main-chart", "#models-rank", "#projects-rank", "#tokens-card", "#heatmap", "#sessions"])
+        $(id).replaceChildren(emptyState("No data yet", "See the message above."));
+    }
     const bh = $("#banners");
     bh.replaceChildren(banner("err", b => {
       b.append(document.createTextNode("Couldn't read usage data: " + err.message + ". "));
@@ -2195,7 +2648,9 @@ setInterval(() => { fetch("/api/ping", { cache: "no-store" }).catch(() => {}); }
 setInterval(() => { if (document.visibilityState === "visible") load(); }, 60000);
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && S.data) load(); });
 
-load();
+renderSkeleton();
+renderCurrencyButton();
+if (!new URLSearchParams(location.search).has("skeleton")) load();   // ?skeleton: preview the loading state
 </script>
 </body>
 </html>

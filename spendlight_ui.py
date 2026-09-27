@@ -24,7 +24,7 @@ from pathlib import Path
 
 from spendlight import (
     FAST_PRICES, PRICES, WEB_SEARCH_PER_REQUEST,
-    cost_breakdown, default_root, lookup_price, rates_for, read_logs,
+    cost_breakdown, default_root, fetch_rates, lookup_price, rates_for, read_logs,
 )
 
 HERE = Path(__file__).resolve().parent
@@ -174,6 +174,14 @@ def make_handler(store):
                 return self._send(200, body, "application/json")
             if path == "/api/ping":
                 return self._send(200, b'{"app":"spendlight"}', "application/json")
+            if path == "/api/rates":
+                # ECB reference rates, fetched only when the page asks (a currency other than USD).
+                try:
+                    info = fetch_rates()
+                    info.pop("fetched", None)
+                    return self._send(200, json.dumps(info).encode("utf-8"), "application/json")
+                except RuntimeError as e:
+                    return self._send(502, json.dumps({"error": str(e)}).encode("utf-8"), "application/json")
             if path == "/favicon.ico":
                 return self._send(204, b"", "image/x-icon")
             return self._send(404, b"Not found", "text/plain")

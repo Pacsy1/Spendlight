@@ -98,6 +98,10 @@ public sealed class DashboardServer : IDisposable
                         Send(res, 500, "application/json", Encoding.UTF8.GetBytes($"{{\"error\":\"{msg}\"}}"));
                     }
                     break;
+                case "/api/rates":
+                    try { Send(res, 200, "application/json", Rates.GetJsonAsync().GetAwaiter().GetResult()); }
+                    catch (Exception ex) { Send(res, 502, "application/json", Rates.ErrorJson(ex.Message)); }
+                    break;
                 case "/api/ping":
                     Send(res, 200, "application/json",
                         Encoding.UTF8.GetBytes($"{{\"app\":\"{PingSignature}\",\"version\":\"{Dashboard.Version}\"}}"));

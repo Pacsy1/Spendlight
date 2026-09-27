@@ -2,7 +2,7 @@
 
 See how many tokens you've used in [Claude Code](https://claude.com/claude-code) and what that usage would cost at Anthropic API list prices, broken down by model, project, session and time.
 
-Everything runs locally. It reads Claude Code's own session logs on your machine (`~/.claude/projects`) and never sends them anywhere.
+Everything runs locally. It reads Claude Code's own session logs on your machine (`~/.claude/projects`), and your usage never leaves it.
 
 > On a Pro or Max plan you aren't billed per token. The figures show what the same usage would cost on the API.
 
@@ -10,6 +10,7 @@ Everything runs locally. It reads Claude Code's own session logs on your machine
 
 - **Dashboard:** spend over time (bars or running total; by model, token type or project), a date range picker with presets, click-to-drill-in and drag-to-zoom, cost by model and project, where the money goes (tokens vs cost by token type), a weekday × hour heatmap, and a sortable, searchable sessions table.
 - **Headline numbers:** total cost with change vs the previous period, tokens, API calls, cost per active day, cache hit rate, money saved by prompt caching and monthly pace.
+- **Any currency:** costs in US dollars or any of 29 other currencies, converted at the European Central Bank's daily reference rates.
 - **Live:** refreshes every minute while open.
 - Light and dark themes.
 
@@ -19,8 +20,23 @@ Everything runs locally. It reads Claude Code's own session logs on your machine
 |---|---|---|
 | **Windows app** | `Spendlight-Setup-<version>.exe`: per-user install, no admin | Windows 10/11 (WebView2, built into Windows 11) |
 | **Linux app** | `bash Spendlight-Linux-<version>.run` | x86-64 or ARM64, glibc; a Chromium-family browser for an app window (otherwise your default browser) |
-| **Python, command line** | `python spendlight.py [--by model\|project\|day\|month\|session] [--since YYYY-MM-DD]` | Python 3 |
-| **Python, dashboard** | `python spendlight_ui.py` → http://127.0.0.1:8765 | Python 3 |
+| **Terminal** | `python spendlight.py` | Python 3.8+, nothing else |
+| **Python, dashboard** | `python spendlight_ui.py` → http://127.0.0.1:8765 | Python 3.8+ |
+
+### In the terminal
+
+[`spendlight.py`](spendlight.py) is a single file with no dependencies: copy it anywhere and run it. By default it prints a summary of the last 30 days, with charts drawn in text:
+
+```bash
+python spendlight.py                        # last 30 days
+python spendlight.py --days 7               # or --all, or --since 2026-09-01 --until 2026-09-15
+python spendlight.py --currency EUR         # any currency the ECB publishes (--list-currencies)
+python spendlight.py --by project           # a table: model, project, session, day, week or month
+python spendlight.py --by day --csv > days.csv
+python spendlight.py --json                 # for scripts
+```
+
+Colours turn off automatically when the output isn't a terminal (or with `--no-color` / `NO_COLOR`), and terminals that can't show Unicode get plain ASCII.
 
 The Windows installer has a silent mode (`/S`, optionally `--dir <path> --no-desktop --no-startmenu --launch`). The Linux installer takes `--yes`, `--system` (with sudo) and `--uninstall`. Run it with `--help` to see everything.
 
@@ -50,7 +66,7 @@ This writes `dist/Spendlight-Setup-<version>.exe` and `dist/Spendlight-Linux-<ve
 
 ```
 dashboard.html              The dashboard UI, shared by every host (hand-drawn SVG charts, no dependencies)
-spendlight.py              Python: log reader, pricing, command-line summary
+spendlight.py              Python: log reader, pricing, currencies, the terminal edition
 spendlight_ui.py           Python: local server for the dashboard
 
 Spendlight.Core/           C#: log reader, pricing, data payload, loopback server (shared)
@@ -86,7 +102,7 @@ Nothing is hidden, and all of it is in [`installer/`](installer/):
 
 **Linux installer:** puts the app in `~/.local/share/spendlight`, links `spendlight` and `spendlight-uninstall` into `~/.local/bin`, and adds a menu entry and icon. It verifies its own SHA-256 checksum before unpacking. Use `--extract DIR` to inspect the contents without installing.
 
-**The app** only reads files under `~/.claude/projects`. Its only network use is its own server on `127.0.0.1`.
+**The app** only reads files under `~/.claude/projects`. It makes one kind of internet request, and only if you pick a currency other than USD: it downloads the European Central Bank's public exchange-rate file ([eurofxref-daily.xml](https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml)), at most every 12 hours. That request sends nothing about you or your usage.
 
 ## Code signing
 
@@ -111,3 +127,4 @@ This program is distributed in the hope that it will be useful, but WITHOUT ANY 
 - **Logs stay local:** they're read from disk on every refresh and never stored or uploaded.
 - **Local server:** the Linux app and the Python dashboard listen on `127.0.0.1` only and reject requests whose `Host` header isn't loopback.
 - **Windows app:** serves the page from memory with no network listener.
+- **Exchange rates:** fetched from the European Central Bank only when you choose a currency other than USD, cached for 12 hours, and reused when you're offline. Nothing is sent with the request.

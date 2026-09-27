@@ -1,9 +1,24 @@
 #!/usr/bin/env python3
 """
-spendlight.py - Tally the tokens Claude Code has spent (from its local
-session logs) and estimate what that would cost at Anthropic API list prices.
+spendlight.py - Spendlight in your terminal. One file, Python 3.8+, no dependencies.
 
-For a visual dashboard, run  spendlight_ui.py  instead.
+Tallies the tokens Claude Code has spent (from its local session logs) and
+estimates what that would cost at Anthropic API list prices: a summary with
+charts, or tables, JSON and CSV for scripting.
+
+    python spendlight.py                      last 30 days: summary and charts
+    python spendlight.py --days 7             ...or any number of days
+    python spendlight.py --all                everything in the logs
+    python spendlight.py --since 2026-09-01 --until 2026-09-15
+    python spendlight.py --by project         a table (model, project, session, day, week, month)
+    python spendlight.py --currency EUR       any currency the European Central Bank publishes
+    python spendlight.py --by day --csv       for spreadsheets; --json for scripts
+    python spendlight.py --list-currencies
+
+For the visual dashboard, run  spendlight_ui.py  (or install the Spendlight app).
+
+Copyright (C) 2026 Pacsy1. Free software under the GNU GPL v3 or later (see LICENSE).
+https://github.com/Pacsy1/spendlight
 
 Where the data comes from
 -------------------------
@@ -33,18 +48,24 @@ $0.25, Opus 5.5: $0.20). Web search: $10 per 1,000 searches.
 NOTE: If you're on a Pro/Max subscription you don't pay per token - this is
 what the same usage *would* cost on the API.
 
-Usage:
-    python spendlight.py                 # summary by model
-    python spendlight.py --by project    # or: day, session, month
-    python spendlight.py --since 2026-09-01 --until 2026-09-30
-    python spendlight.py --dir D:\\other\\.claude\\projects
+Currencies
+----------
+Other currencies use the European Central Bank's daily reference rates
+(eurofxref-daily.xml), fetched only when you ask for a currency other than USD
+and cached for 12 hours. Nothing about your usage is sent anywhere.
 """
 
 import argparse
+import csv
 import json
 import os
+import re
+import shutil
 import sys
+import time
+import urllib.request
 from collections import defaultdict
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 # model-id prefix -> (input, output, cache_read or None for 0.1x input)
@@ -279,63 +300,560 @@ def default_root():
     return Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude") / "projects"
 
 
+# ─────────────────────────────── currencies ───────────────────────────────
+
+# The euro plus every currency in the ECB's daily reference rates.
+CURRENCIES = {
+    "USD": "United States Dollar", "EUR": "Euro", "GBP": "British Pound", "JPY": "Japanese Yen",
+    "CHF": "Swiss Franc", "CAD": "Canadian Dollar", "AUD": "Australian Dollar", "NZD": "New Zealand Dollar",
+    "CNY": "Chinese Yuan", "HKD": "Hong Kong Dollar", "SGD": "Singapore Dollar", "KRW": "South Korean Won",
+    "INR": "Indian Rupee", "IDR": "Indonesian Rupiah", "MYR": "Malaysian Ringgit", "PHP": "Philippine Peso",
+    "THB": "Thai Baht", "ILS": "Israeli New Shekel", "TRY": "Turkish Lira", "ZAR": "South African Rand",
+    "BRL": "Brazilian Real", "MXN": "Mexican Peso", "SEK": "Swedish Krona", "NOK": "Norwegian Krone",
+    "DKK": "Danish Krone", "ISK": "Icelandic Króna", "PLN": "Polish Złoty", "CZK": "Czech Koruna",
+    "HUF": "Hungarian Forint", "RON": "Romanian Leu",
+}
+# Unambiguous symbols only; every other currency is shown with its code ("5,396.58 HKD").
+SYMBOLS = {"USD": "$", "EUR": "€", "GBP": "£", "JPY": "¥", "CNY": "CN¥", "INR": "₹", "KRW": "₩",
+           "ILS": "₪", "TRY": "₺", "PHP": "₱", "THB": "฿"}
+ZERO_DECIMALS = {"JPY", "KRW", "ISK", "HUF", "IDR"}
+ECB_URL = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml"
+
+
+def _data_dir():
+    if os.name == "nt":
+        return Path(os.environ.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local") / "Spendlight"
+    return Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "spendlight"
+
+
+def fetch_rates(max_age=12 * 3600, timeout=8):
+    """The ECB's daily reference rates as {"source", "date", "base": "EUR", "rates": {code: per EUR},
+    "stale"}. Cached on disk for max_age seconds; if the network is unavailable an older cached copy
+    is returned with stale=True. Raises RuntimeError when there is nothing to fall back on."""
+    cache = _data_dir() / "rates.json"
+    cached = None
+    try:
+        cached = json.loads(cache.read_text(encoding="utf-8"))
+        if time.time() - cached.get("fetched", 0) < max_age:
+            return dict(cached, stale=False)
+    except (OSError, ValueError):
+        cached = None
+    try:
+        req = urllib.request.Request(ECB_URL, headers={"User-Agent": "Spendlight"})
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            xml = resp.read().decode("utf-8", "replace")
+        day = re.search(r"time=['\"](\d{4}-\d{2}-\d{2})['\"]", xml)
+        rates = {c: float(v) for c, v in re.findall(r"currency=['\"]([A-Z]{3})['\"]\s+rate=['\"]([0-9.]+)['\"]", xml)}
+        if not day or "USD" not in rates:
+            raise ValueError("unexpected response")
+        rates["EUR"] = 1.0
+        data = {"source": "European Central Bank", "date": day.group(1), "base": "EUR",
+                "rates": rates, "fetched": time.time()}
+        try:
+            cache.parent.mkdir(parents=True, exist_ok=True)
+            cache.write_text(json.dumps(data), encoding="utf-8")
+        except OSError:
+            pass
+        return dict(data, stale=False)
+    except Exception as e:  # network, TLS, parsing
+        if cached:
+            return dict(cached, stale=True)
+        raise RuntimeError(f"couldn't get exchange rates from the European Central Bank ({e})") from e
+
+
+class Money:
+    """Formats US-dollar amounts in the chosen currency."""
+
+    def __init__(self, code="USD", rate=1.0):
+        self.code, self.rate = code, rate
+
+    @classmethod
+    def for_currency(cls, code):
+        code = code.upper()
+        if code == "USD":
+            return cls(), None
+        info = fetch_rates()
+        rates = info["rates"]
+        if code not in rates:
+            raise RuntimeError(f"the ECB doesn't publish a rate for {code} (see --list-currencies)")
+        return cls(code, rates[code] / rates["USD"]), info
+
+    def __call__(self, usd, compact=False):
+        v = usd * self.rate
+        dec = 0 if self.code in ZERO_DECIMALS else 2
+        a, prefix = abs(v), "-" if v < 0 else ""
+        if compact and a >= 1000:
+            for unit, size in (("B", 1e9), ("M", 1e6), ("K", 1e3)):
+                if a >= size:
+                    num = f"{a / size:.1f}".rstrip("0").rstrip(".") + unit
+                    break
+        elif 0 < a < 10 ** -dec:
+            prefix, num = "<", f"{10 ** -dec:.{dec}f}"
+        elif compact and a >= 100:
+            num = f"{a:,.0f}"
+        else:
+            num = f"{a:,.{dec}f}"
+        sym = SYMBOLS.get(self.code)
+        return f"{prefix}{sym}{num}" if sym else f"{prefix}{num} {self.code}"
+
+
+# ─────────────────────────────── terminal ───────────────────────────────
+
+# The dashboard's categorical palette (dark variant), so models keep their colors everywhere.
+SLOTS = ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#008300", "#9085e9", "#e66767"]
+OTHER, MUTED, GOOD = "#8a8a8a", "#898781", "#0ca30c"
+
+
+class Term:
+    def __init__(self, no_color=False):
+        out = sys.stdout
+        try:
+            "█▏▕●┤└─·–".encode(out.encoding or "ascii")
+            self.unicode = True
+        except (UnicodeEncodeError, LookupError):
+            self.unicode = False
+        self.color = (not no_color and out.isatty() and not os.environ.get("NO_COLOR")
+                      and os.environ.get("TERM") != "dumb")
+        if self.color and os.name == "nt":
+            self.color = _enable_windows_vt()
+        self.truecolor = os.environ.get("COLORTERM") in ("truecolor", "24bit") or bool(os.environ.get("WT_SESSION"))
+        self.width = max(60, min(shutil.get_terminal_size((100, 24)).columns - 2, 110))
+        self.block, self.dot, self.dash = ("█", "●", "–") if self.unicode else ("#", "*", "-")
+
+    def paint(self, text, hexcolor=None, bold=False, dim=False):
+        if not self.color:
+            return text
+        codes = []
+        if bold:
+            codes.append("1")
+        if dim:
+            codes.append("2")
+        if hexcolor:
+            r, g, b = (int(hexcolor[i:i + 2], 16) for i in (1, 3, 5))
+            if self.truecolor:
+                codes.append(f"38;2;{r};{g};{b}")
+            else:  # nearest xterm-256 colour cube entry
+                codes.append(f"38;5;{16 + 36 * round(r / 51) + 6 * round(g / 51) + round(b / 51)}")
+        return f"\033[{';'.join(codes)}m{text}\033[0m" if codes else text
+
+    def hbar(self, frac, width, hexcolor):
+        cells = max(0.0, min(1.0, frac)) * width
+        if not self.unicode:
+            s = "#" * int(round(cells))
+        else:
+            full, rem = int(cells), int((cells - int(cells)) * 8)
+            s = "█" * full + ("▏▎▍▌▋▊▉"[rem - 1] if rem else "")
+            if not s and frac > 0:
+                s = "▏"
+        return self.paint(s, hexcolor) + " " * (width - len(s))
+
+
+# Plain-ASCII stand-ins for terminals that can't show Unicode (e.g. an old Windows code page).
+ASCII = str.maketrans({"·": "-", "–": "-", "…": "...", "▲": "+", "▼": "-", "●": "*", "│": "|", "└": "+", "─": "-"})
+
+
+def emit(text=""):
+    print(text if TERM_UNICODE else text.translate(ASCII))
+
+
+TERM_UNICODE = True
+
+
+def _enable_windows_vt():
+    try:
+        import ctypes
+        k = ctypes.windll.kernel32
+        h = k.GetStdHandle(-11)
+        mode = ctypes.c_uint32()
+        if not k.GetConsoleMode(h, ctypes.byref(mode)):
+            return False
+        return bool(k.SetConsoleMode(h, mode.value | 0x0004))  # ENABLE_VIRTUAL_TERMINAL_PROCESSING
+    except Exception:
+        return False
+
+
+def vlen(s):
+    return len(re.sub(r"\033\[[0-9;]*m", "", s))
+
+
+def pad(s, width, right=False):
+    gap = " " * max(0, width - vlen(s))
+    return gap + s if right else s + gap
+
+
+def clip(s, width):
+    return s if len(s) <= width else s[: max(1, width - 1)] + "…"
+
+
+def model_name(model):
+    """claude-opus-5-5 -> Opus 5.5, claude-3-5-haiku -> Haiku 3.5."""
+    s = re.sub(r"-\d{8}$", "", re.sub(r"^claude-", "", model))
+    m = re.match(r"^([a-z]+)-(\d+)(?:-(\d+))?$", s)
+    if m:
+        return f"{m.group(1).capitalize()} {m.group(2)}" + (f".{m.group(3)}" if m.group(3) else "")
+    m = re.match(r"^(\d+)-(\d+)-([a-z]+)$", s)
+    if m:
+        return f"{m.group(3).capitalize()} {m.group(1)}.{m.group(2)}"
+    return model
+
+
+# ─────────────────────────────── analysis ───────────────────────────────
+
+def load(root):
+    """All priced records as dicts with local time, costs and tokens; plus session titles and unpriced models."""
+    meta = {}
+    out, unpriced = [], defaultdict(int)
+    for r in read_logs(root, meta=meta):
+        try:
+            when = datetime.fromisoformat(r["ts"].replace("Z", "+00:00")).astimezone()
+        except ValueError:
+            continue
+        b = cost_breakdown(r["model"], r["u"])
+        if b is None:
+            unpriced[r["model"]] += 1
+            b = dict.fromkeys(("input", "cache_write", "cache_read", "output", "web", "no_cache"), 0.0)
+        u = r["u"]
+        out.append({
+            "when": when, "day": when.date(), "model": r["model"], "project": r["project"], "session": r["session"],
+            "input": u["input"], "cache_write": u["cache_5m"] + u["cache_1h"], "cache_read": u["cache_read"],
+            "output": u["output"], "web": u["web_search"], "c": b,
+            "cost": b["input"] + b["cache_write"] + b["cache_read"] + b["output"] + b["web"],
+        })
+    out.sort(key=lambda x: x["when"])
+    titles = {**meta.get("prompts", {}), **meta.get("titles", {})}
+    return out, titles, dict(unpriced)
+
+
+def tokens(x):
+    return x["input"] + x["cache_write"] + x["cache_read"] + x["output"]
+
+
+def project_label(path):
+    parts = [p for p in re.split(r"[\\/]", path) if p]
+    return parts[-1] if parts else path
+
+
+def resolve_range(args, recs):
+    today = date.today()
+    if args.since or args.until:
+        start = date.fromisoformat(args.since) if args.since else (recs[0]["day"] if recs else today)
+        end = date.fromisoformat(args.until) if args.until else today
+        label = f"{start:%b %d, %Y} – {end:%b %d, %Y}"
+    elif args.all:
+        start, end = (recs[0]["day"] if recs else today), today
+        label = "all time"
+    else:
+        start, end = today - timedelta(days=args.days - 1), today
+        label = f"last {args.days} days" if args.days != 1 else "today"
+    return start, end, label
+
+
+def group(recs, key):
+    g = defaultdict(lambda: {"cost": 0.0, "tokens": 0, "calls": 0, "input": 0, "cache_write": 0,
+                             "cache_read": 0, "output": 0, "sessions": set(), "first": None})
+    for x in recs:
+        e = g[key(x)]
+        e["cost"] += x["cost"]
+        e["tokens"] += tokens(x)
+        e["calls"] += 1
+        for k in ("input", "cache_write", "cache_read", "output"):
+            e[k] += x[k]
+        e["sessions"].add(x["session"])
+        e["first"] = e["first"] or x["when"]
+    return g
+
+
+def model_colors(all_recs):
+    """Color follows the model (ranked by all-time cost), like the dashboard."""
+    cost = defaultdict(float)
+    for x in all_recs:
+        cost[x["model"]] += x["cost"]
+    order = sorted(cost, key=cost.get, reverse=True)
+    keep = 8 if len(order) <= 8 else 7
+    return {m: (SLOTS[i] if i < keep else OTHER) for i, m in enumerate(order)}
+
+
+# ─────────────────────────────── summary view ───────────────────────────────
+
+def print_summary(t, money, fx, recs, prev, all_recs, titles, start, end, label, top, unpriced):
+    W = t.width
+    P = t.paint
+    ln = emit
+    cost = sum(x["cost"] for x in recs)
+    tok = sum(tokens(x) for x in recs)
+    inp_all = sum(x["input"] + x["cache_write"] + x["cache_read"] for x in recs)
+    hit = sum(x["cache_read"] for x in recs) / inp_all if inp_all else 0
+    saved = sum(x["c"]["no_cache"] for x in recs) - cost
+    days_active = len({x["day"] for x in recs})
+    sessions = {x["session"] for x in recs}
+
+    mark = P("▂▄▆" if t.unicode else "::", SLOTS[0])
+    span_text = f"{start:%b %d} – {end:%b %d, %Y}"
+    ln()
+    ln(f"  {mark} {P('Spendlight', bold=True)}  {P('·', MUTED)}  {P(label, MUTED)}  {P(span_text, MUTED)}")
+    ln()
+    headline = P(money(cost), bold=True)
+    delta = ""
+    if prev is not None:
+        pc = sum(x["cost"] for x in prev)
+        if pc > 0:
+            ch = (cost - pc) / pc
+            arrow = ("▲" if ch >= 0 else "▼") if t.unicode else ("+" if ch >= 0 else "-")
+            delta = P(f"{arrow} {abs(ch) * 100:.0f}% vs the previous {(end - start).days + 1} days ({money(pc)})", MUTED)
+        else:
+            delta = P(f"no spend in the previous {(end - start).days + 1} days", MUTED)
+    ln(f"  {headline}   {delta}")
+    ln(f"  {P('estimated API cost', MUTED)}")
+    ln()
+    facts = [("tokens", fmt_tokens(tok)), ("calls", f"{len(recs):,}"), ("sessions", str(len(sessions))),
+             ("active days", str(days_active)), ("cache hit", f"{hit * 100:.1f}%"),
+             ("saved by caching", money(saved))]
+    ln("  " + P("  ·  ", MUTED).join(f"{P(v, bold=True)} {P(k, MUTED)}" for k, v in facts))
+    if fx:
+        stale = " (offline: last known rates)" if fx.get("stale") else ""
+        rate_note = "1 USD = {:,.4f} {} · ECB reference rate of {}{}".format(money.rate, money.code, fx["date"], stale)
+        ln(f"  {P(rate_note, MUTED)}")
+    if not recs:
+        ln(f"\n  {P('No Claude Code usage in this range.', MUTED)}\n")
+        return
+
+    # Daily spend: one column per day (or week, when the range is long).
+    ln()
+    ln(f"  {P('Spend over time', bold=True)}")
+    n_days = (end - start).days + 1
+    span = 1 if n_days <= W - 14 else 7
+    buckets = []
+    d = start
+    while d <= end:
+        buckets.append((d, min(d + timedelta(days=span - 1), end)))
+        d += timedelta(days=span)
+    by_day = defaultdict(float)
+    for x in recs:
+        by_day[x["day"]] += x["cost"]
+    values = [sum(by_day[a + timedelta(days=i)] for i in range((b - a).days + 1)) for a, b in buckets]
+    colw = 2 if len(values) * 2 <= W - 14 else 1
+    height = 7
+    peak = max(values) or 1
+    levels = " ▁▂▃▄▅▆▇█" if t.unicode else " ..::||##"
+    axis_w = max(len(money(peak, True)), 2) + 1
+    for row in range(height, 0, -1):
+        line = ""
+        for v in values:
+            fill = v / peak * height - (row - 1)
+            ch = levels[8] if fill >= 1 else levels[max(1, int(round(fill * 8)))] if fill > 0 else " "
+            line += ch + (" " if colw == 2 else "")
+        lab = money(peak, True) if row == height else ""
+        ln(f"  {P(lab.rjust(axis_w), MUTED)} {P('│' if t.unicode else '|', MUTED)}{P(line, SLOTS[0])}")
+    ln(f"  {P('0'.rjust(axis_w), MUTED)} {P(('└' + '─' * (len(values) * colw)) if t.unicode else ('+' + '-' * (len(values) * colw)), MUTED)}")
+    first, last = f"{buckets[0][0]:%b %d}", f"{buckets[-1][0]:%b %d}"
+    gap = len(values) * colw - len(first) - len(last)
+    ln(f"  {' ' * (axis_w + 2)}{P(first + ' ' * max(1, gap) + last, MUTED)}" + (P("   (weekly)", MUTED) if span == 7 else ""))
+    best = max(range(len(values)), key=values.__getitem__)
+    busiest = "Busiest " + ("week of " if span == 7 else "") + f"{buckets[best][0]:%a %b %d}: {money(values[best])}"
+    ln(f"  {P(busiest, MUTED)}")
+
+    colors = model_colors(all_recs)
+    name_w = 22
+    bar_w = max(10, W - name_w - 36)
+
+    # By model
+    ln()
+    ln(f"  {P(pad('By model', name_w + bar_w + 4), bold=True)}{P(pad('cost', 11, True) + pad('share', 8, True) + pad('tokens', 9, True), MUTED)}")
+    g = group(recs, lambda x: x["model"])
+    rows = sorted(g.items(), key=lambda kv: kv[1]["cost"], reverse=True)
+    mx = rows[0][1]["cost"] or 1
+    for m, e in rows[:top]:
+        name = clip(model_name(m), name_w - 2)
+        share = "{:.0f}%".format(e["cost"] / cost * 100) if cost else "–"
+        ln(f"  {P(t.dot, colors.get(m, OTHER))} {pad(name, name_w - 2)}  {t.hbar(e['cost'] / mx, bar_w, colors.get(m, OTHER))}  "
+           f"{pad(money(e['cost']), 11, True)}{pad(share, 8, True)}{pad(fmt_tokens(e['tokens']), 9, True)}")
+
+    # Where the money goes
+    ln()
+    ln(f"  {P('Where the money goes', bold=True)}  {P('share of tokens vs share of cost', MUTED)}")
+    kinds = [("Output", "output", "output", SLOTS[0]), ("Cache read", "cache_read", "cache_read", SLOTS[1]),
+             ("Cache write", "cache_write", "cache_write", SLOTS[2]), ("Input", "input", "input", SLOTS[3])]
+    half = max(8, (W - name_w - 30) // 2)
+    for lab, tk, ck, col in kinds:
+        kt = sum(x[tk] for x in recs)
+        kc = sum(x["c"][ck] for x in recs)
+        tshare, cshare = (kt / tok if tok else 0), (kc / cost if cost else 0)
+        ln(f"  {P(t.dot, col)} {pad(lab, name_w - 2)}  {t.hbar(tshare, half, col)} {pad(f'{tshare * 100:.0f}%', 4, True)} tokens   "
+           f"{t.hbar(cshare, half, col)} {pad(f'{cshare * 100:.0f}%', 4, True)} cost")
+    web = sum(x["c"]["web"] for x in recs)
+    if web:
+        ln(f"  {P(t.dot, SLOTS[4])} {pad('Web search', name_w - 2)}  {money(web)}")
+
+    # Projects
+    ln()
+    ln(f"  {P(pad('Top projects', name_w + bar_w + 4), bold=True)}{P(pad('cost', 11, True) + pad('sessions', 10, True), MUTED)}")
+    g = group(recs, lambda x: x["project"])
+    rows = sorted(g.items(), key=lambda kv: kv[1]["cost"], reverse=True)
+    mx = rows[0][1]["cost"] or 1
+    for p, e in rows[:top]:
+        ln(f"    {pad(clip(project_label(p), name_w - 2), name_w - 2)}  {t.hbar(e['cost'] / mx, bar_w, SLOTS[0])}  "
+           f"{pad(money(e['cost']), 11, True)}{pad(str(len(e['sessions'])), 10, True)}")
+    if len(rows) > top:
+        ln(f"    {P(f'… and {len(rows) - top} more (see --by project)', MUTED)}")
+
+    # Sessions
+    ln()
+    title_w = max(20, W - 48)
+    ln(f"  {P(pad('Priciest sessions', title_w + 4), bold=True)}{P(pad('started', 14) + pad('calls', 7, True) + pad('cost', 12, True), MUTED)}")
+    g = group(recs, lambda x: x["session"])
+    rows = sorted(g.items(), key=lambda kv: kv[1]["cost"], reverse=True)
+    proj_of = {x["session"]: x["project"] for x in recs}
+    for s, e in rows[:top]:
+        title = titles.get(s) or "Untitled ({})".format(s[:8])
+        proj = clip(project_label(proj_of[s]), 18)
+        room = title_w - 2                       # always leave a gap before the date column
+        name = clip(title, max(8, room - len(proj) - 3)) + P(" · " + proj, MUTED)
+        calls = "{:,}".format(e["calls"])
+        ln(f"    {pad(name, title_w)}{pad(e['first'].strftime('%b %d %H:%M'), 14)}{pad(calls, 7, True)}{pad(money(e['cost']), 12, True)}")
+
+    ln()
+    if unpriced:
+        missing = ", ".join("{} ({} calls)".format(m, n) for m, n in unpriced.items())
+        ln(f"  {P('No price known for: ' + missing + ' — counted as 0.', '#e66767')}")
+    ln(f"  {P('Estimated at Anthropic API list prices. On a Pro or Max plan you are not billed per token.', MUTED)}")
+    ln()
+
+
+# ─────────────────────────────── table / csv / json ───────────────────────────────
+
+def table_rows(recs, by, titles):
+    keyf = {
+        "model": lambda x: x["model"],
+        "project": lambda x: x["project"],
+        "session": lambda x: x["session"],
+        "day": lambda x: x["day"].isoformat(),
+        "week": lambda x: (x["day"] - timedelta(days=x["day"].weekday())).isoformat(),
+        "month": lambda x: x["day"].strftime("%Y-%m"),
+    }[by]
+    g = group(recs, keyf)
+    rows = []
+    for k, e in g.items():
+        name = {"model": model_name, "project": project_label}.get(by, lambda v: v)(k)
+        if by == "session":
+            name = titles.get(k) or k[:8]
+        rows.append({"key": k, "name": name, "calls": e["calls"], "tokens": e["tokens"], "input": e["input"],
+                     "cache_write": e["cache_write"], "cache_read": e["cache_read"], "output": e["output"],
+                     "cost_usd": round(e["cost"], 6)})
+    if by in ("day", "week", "month"):
+        rows.sort(key=lambda r: r["key"])
+    else:
+        rows.sort(key=lambda r: r["cost_usd"], reverse=True)
+    return rows
+
+
+def print_table(t, money, rows, by):
+    P = t.paint
+    total = sum(r["cost_usd"] for r in rows) or 1
+    name_w = min(max([len(by)] + [len(str(r["name"])) for r in rows]), max(20, t.width - 72)) + 2
+    cols = [("Calls", 8), ("Tokens", 9), ("Input", 9), ("Cache wr", 9), ("Cache rd", 9), ("Output", 9), ("Cost", 13), ("Share", 7)]
+    head = pad(by.capitalize(), name_w) + "".join(pad(c, w, True) for c, w in cols)
+    emit(P(head, bold=True))
+    emit(P(t.dash * vlen(head), MUTED))
+
+    def line(name, r):
+        vals = [f"{r['calls']:,}", fmt_tokens(r["tokens"]), fmt_tokens(r["input"]), fmt_tokens(r["cache_write"]),
+                fmt_tokens(r["cache_read"]), fmt_tokens(r["output"]), money(r["cost_usd"]),
+                f"{r['cost_usd'] / total * 100:.1f}%"]
+        return pad(clip(str(name), name_w - 2), name_w) + "".join(pad(v, w, True) for v, (_, w) in zip(vals, cols))
+
+    for r in rows:
+        emit(line(r["name"], r))
+    tot = {k: sum(r[k] for r in rows) for k in ("calls", "tokens", "input", "cache_write", "cache_read", "output", "cost_usd")}
+    emit(P(t.dash * vlen(head), MUTED))
+    emit(P(line("Total", tot), bold=True))
+
+
+# ─────────────────────────────── main ───────────────────────────────
+
 def main():
     root = default_root()
-    ap = argparse.ArgumentParser(description="Estimate Spendlight from local logs.")
-    ap.add_argument("--dir", type=Path, default=root, help=f"projects log dir (default: {root})")
-    ap.add_argument("--by", choices=["model", "project", "day", "month", "session"], default="model")
-    ap.add_argument("--since", help="YYYY-MM-DD (inclusive)")
-    ap.add_argument("--until", help="YYYY-MM-DD (inclusive)")
+    ap = argparse.ArgumentParser(
+        prog="spendlight",
+        description="Spendlight: what your Claude Code usage would cost at Anthropic API list prices.",
+        epilog="Examples: spendlight.py --days 7 | --all --currency EUR | --by project | --by day --csv > days.csv")
+    ap.add_argument("--days", type=int, default=30, help="how many days back, including today (default 30)")
+    ap.add_argument("--all", action="store_true", help="everything in the logs")
+    ap.add_argument("--since", metavar="YYYY-MM-DD", help="first day (inclusive)")
+    ap.add_argument("--until", metavar="YYYY-MM-DD", help="last day (inclusive)")
+    ap.add_argument("--by", choices=["model", "project", "session", "day", "week", "month"], help="print a table grouped by this")
+    ap.add_argument("--currency", default="USD", metavar="CODE", help="show costs in this currency (ECB rates), e.g. EUR, GBP, HUF")
+    ap.add_argument("--top", type=int, default=6, help="rows per section in the summary (default 6)")
+    ap.add_argument("--json", action="store_true", help="machine-readable output")
+    ap.add_argument("--csv", action="store_true", help="CSV table (implies --by day unless --by is given)")
+    ap.add_argument("--no-color", action="store_true", help="plain text, no colors")
+    ap.add_argument("--list-currencies", action="store_true", help="list supported currencies and exit")
+    ap.add_argument("--dir", type=Path, default=root, help=f"Claude Code logs folder (default: {root})")
     args = ap.parse_args()
 
+    if args.list_currencies:
+        for code, name in CURRENCIES.items():
+            print(f"{code}  {name}")
+        return
+    if args.days < 1:
+        ap.error("--days must be at least 1")
     if not args.dir.is_dir():
-        sys.exit(f"Log directory not found: {args.dir}")
+        sys.exit(f"spendlight: Claude Code logs not found at {args.dir} (use --dir)")
+    try:
+        money, fx = Money.for_currency(args.currency)
+    except RuntimeError as e:
+        sys.exit(f"spendlight: {e}")
 
-    groups = defaultdict(lambda: {"input": 0, "cache_w": 0, "cache_read": 0, "output": 0,
-                                  "calls": 0, "cost": 0.0})
-    unpriced = defaultdict(int)
-    total = groups["__total__"]
+    t = Term(args.no_color or args.json or args.csv)
+    global TERM_UNICODE
+    TERM_UNICODE = t.unicode
+    all_recs, titles, unpriced = load(args.dir)
+    try:
+        start, end, label = resolve_range(args, all_recs)
+    except ValueError:
+        ap.error("dates must look like 2026-09-01")
+    recs = [x for x in all_recs if start <= x["day"] <= end]
+    span = (end - start).days + 1
+    prev = None if args.all else [x for x in all_recs if start - timedelta(days=span) <= x["day"] < start]
+    currency = {"code": money.code, "per_usd": money.rate, **({"rates_date": fx["date"], "source": fx["source"]} if fx else {})}
 
-    for r in read_logs(args.dir, args.since, args.until):
-        u = r["u"]
-        c = cost_of(r["model"], u)
-        if c is None:
-            unpriced[r["model"]] += 1
-            c = 0.0
-        key = {"model": r["model"], "project": r["project"], "day": r["day"],
-               "month": r["day"][:7], "session": r["session"]}[args.by]
-        for g in (groups[key], total):
-            g["input"] += u["input"]
-            g["cache_w"] += u["cache_5m"] + u["cache_1h"]
-            g["cache_read"] += u["cache_read"]
-            g["output"] += u["output"]
-            g["calls"] += 1
-            g["cost"] += c
+    if args.csv or (args.by and not args.json):
+        rows = table_rows(recs, args.by or "day", titles)
+        if args.csv:
+            w = csv.writer(sys.stdout, lineterminator="\n")
+            w.writerow([args.by or "day", "calls", "tokens", "input", "cache_write", "cache_read", "output", f"cost_{money.code.lower()}"])
+            for r in rows:
+                w.writerow([r["name"], r["calls"], r["tokens"], r["input"], r["cache_write"], r["cache_read"], r["output"],
+                            round(r["cost_usd"] * money.rate, 4)])
+        else:
+            emit(t.paint(f"\nSpendlight · {label} ({start:%b %d} – {end:%b %d, %Y})\n", MUTED))
+            print_table(t, money, rows, args.by)
+            emit()
+        return
 
-    rows = [(k, v) for k, v in groups.items() if k != "__total__"]
-    if args.by in ("day", "month"):
-        rows.sort(key=lambda kv: kv[0])
-    else:
-        rows.sort(key=lambda kv: kv[1]["cost"], reverse=True)
+    if args.json:
+        cost = sum(x["cost"] for x in recs)
+        out = {
+            "range": {"from": start.isoformat(), "to": end.isoformat(), "label": label},
+            "currency": currency,
+            "cost": round(cost * money.rate, 4),
+            "tokens": sum(tokens(x) for x in recs),
+            "calls": len(recs),
+            "sessions": len({x["session"] for x in recs}),
+            "by": {by: [dict(r, cost=round(r["cost_usd"] * money.rate, 4)) for r in table_rows(recs, by, titles)]
+                   for by in ([args.by] if args.by else ["model", "project", "session", "day"])},
+            "unpriced_models": unpriced,
+        }
+        json.dump(out, sys.stdout, indent=2, default=str)
+        print()
+        return
 
-    label = args.by.capitalize()
-    width = max([len(label), 5] + [min(len(k), 60) for k, _ in rows])
-    header = f"{label:<{width}}  {'Calls':>7}  {'Input':>9}  {'CacheWr':>9}  {'CacheRd':>9}  {'Output':>9}  {'Cost USD':>11}"
-    print(header)
-    print("-" * len(header))
-    for k, v in rows + [("TOTAL", total)]:
-        if k == "TOTAL":
-            print("-" * len(header))
-        name = k if len(k) <= 60 else "..." + k[-57:]
-        print(f"{name:<{width}}  {v['calls']:>7}  {fmt_tokens(v['input']):>9}  {fmt_tokens(v['cache_w']):>9}  "
-              f"{fmt_tokens(v['cache_read']):>9}  {fmt_tokens(v['output']):>9}  ${v['cost']:>10,.2f}")
-
-    all_tokens = total["input"] + total["cache_w"] + total["cache_read"] + total["output"]
-    print(f"\nTotal tokens: {all_tokens:,}   Estimated API cost: ${total['cost']:,.2f}")
-    if unpriced:
-        print("No price known for (counted as $0): " +
-              ", ".join(f"{m} ({n} calls)" for m, n in unpriced.items()))
+    print_summary(t, money, fx, recs, prev, all_recs, titles, start, end, label, max(1, args.top), unpriced)
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        sys.exit(130)
+    except BrokenPipeError:  # e.g. piped into `head`
+        sys.stderr.close()

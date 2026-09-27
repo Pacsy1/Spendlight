@@ -1,10 +1,12 @@
 # Spendlight
 
-See how many tokens you've used in [Claude Code](https://claude.com/claude-code) and what that usage would cost at Anthropic API list prices, broken down by model, project, session and time.
+**A spend tracker for Claude Code.** See how many tokens you've used in [Claude Code](https://claude.com/claude-code) and what that usage would cost at Anthropic API list prices, broken down by model, project, session and time.
 
-Everything runs locally. It reads Claude Code's own session logs on your machine (`~/.claude/projects`), and your usage never leaves it.
+Everything runs locally. Spendlight reads Claude Code's own session logs on your machine (`~/.claude/projects`), and your usage never leaves it.
 
 > On a Pro or Max plan you aren't billed per token. The figures show what the same usage would cost on the API.
+
+*Formerly known as Claude Code Spend.*
 
 ## What you get
 

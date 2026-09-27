@@ -313,10 +313,54 @@ CURRENCIES = {
     "DKK": "Danish Krone", "ISK": "Icelandic Króna", "PLN": "Polish Złoty", "CZK": "Czech Koruna",
     "HUF": "Hungarian Forint", "RON": "Romanian Leu",
 }
-# Unambiguous symbols only; every other currency is shown with its code ("5,396.58 HKD").
-SYMBOLS = {"USD": "$", "EUR": "€", "GBP": "£", "JPY": "¥", "CNY": "CN¥", "INR": "₹", "KRW": "₩",
-           "ILS": "₪", "TRY": "₺", "PHP": "₱", "THB": "฿"}
+# How each currency is written at home: symbol, after the number?, space between? Ambiguous
+# symbols get their distinct form (CA$, HK$, CN¥). Digits stay 1,234.56. Same table as the dashboard.
+MONEY_STYLE = {
+    "USD": ("$", 0, 0), "EUR": ("€", 1, 1), "GBP": ("£", 0, 0), "JPY": ("¥", 0, 0), "CHF": ("CHF", 0, 1),
+    "CAD": ("CA$", 0, 0), "AUD": ("A$", 0, 0), "NZD": ("NZ$", 0, 0), "CNY": ("CN¥", 0, 0), "HKD": ("HK$", 0, 0),
+    "SGD": ("S$", 0, 0), "KRW": ("₩", 0, 0), "INR": ("₹", 0, 0), "IDR": ("Rp", 0, 1), "MYR": ("RM", 0, 0),
+    "PHP": ("₱", 0, 0), "THB": ("฿", 0, 0), "ILS": ("₪", 1, 1), "TRY": ("₺", 0, 0), "ZAR": ("R", 0, 1),
+    "BRL": ("R$", 0, 1), "MXN": ("MX$", 0, 0), "SEK": ("kr", 1, 1), "NOK": ("kr", 1, 1), "DKK": ("kr.", 1, 1),
+    "ISK": ("kr.", 1, 1), "PLN": ("zł", 1, 1), "CZK": ("Kč", 1, 1), "HUF": ("Ft", 1, 1), "RON": ("lei", 1, 1),
+}
 ZERO_DECIMALS = {"JPY", "KRW", "ISK", "HUF", "IDR"}
+
+# What people call them, for --currency: country names (short, formal, native), ISO codes, nicknames.
+ALIASES = {
+    "USD": "us|usa|u.s.|u.s.a.|america|united states|united states of america|american dollar|dollar|buck|$",
+    "EUR": "eu|europe|european union|eurozone|euro area|germany|deutschland|france|italy|spain|netherlands|holland|"
+           "belgium|austria|ireland|portugal|finland|greece|slovakia|slovenia|estonia|latvia|lithuania|luxembourg|"
+           "malta|cyprus|croatia|bulgaria|€",
+    "GBP": "uk|gb|gbr|united kingdom|great britain|britain|england|scotland|wales|northern ireland|pound|"
+           "pound sterling|sterling|quid|£",
+    "JPY": "jp|jpn|japan|nippon|nihon|yen|¥", "CHF": "ch|che|switzerland|swiss|schweiz|suisse|liechtenstein|franc",
+    "CAD": "ca|can|canada|loonie", "AUD": "au|aus|australia", "NZD": "nz|nzl|new zealand|aotearoa|kiwi",
+    "CNY": "cn|chn|china|prc|people's republic of china|renminbi|rmb|yuan", "HKD": "hk|hkg|hong kong",
+    "SGD": "sg|sgp|singapore", "KRW": "kr|kor|korea|south korea|republic of korea|won|₩",
+    "INR": "in|ind|india|bharat|rupee|₹", "IDR": "id|idn|indonesia|rupiah", "MYR": "my|mys|malaysia|ringgit",
+    "PHP": "ph|phl|philippines|pilipinas|piso", "THB": "th|tha|thailand|baht", "ILS": "il|isr|israel|shekel|sheqel|nis",
+    "TRY": "tr|tur|turkey|türkiye|turkiye|lira", "ZAR": "za|zaf|rsa|south africa|rand",
+    "BRL": "br|bra|brazil|brasil|real|reais", "MXN": "mx|mex|mexico|méxico|peso", "SEK": "se|swe|sweden|sverige|krona",
+    "NOK": "no|nor|norway|norge", "DKK": "dk|dnk|denmark|danmark", "ISK": "is|isl|iceland|ísland",
+    "PLN": "pl|pol|poland|polska|zloty", "CZK": "cz|cze|czechia|czech republic|česko|koruna",
+    "HUF": "hu|hun|hungary|magyarország|magyarorszag|forint", "RON": "ro|rou|romania|românia|leu|lei",
+}
+
+
+def _search_key(s):
+    import unicodedata
+    s = "".join(ch for ch in unicodedata.normalize("NFD", s) if not unicodedata.combining(ch)).lower()
+    s = re.sub(r"\s+", " ", s.replace("ł", "l").replace(".", "").replace("'", "").replace("’", "")).strip()
+    return s[4:] if s.startswith("the ") else s
+
+
+def resolve_currency(text):
+    """'HUF', 'hungary', 'the United States of America', '€' -> ISO code, or None."""
+    q = _search_key(text)
+    for code, name in CURRENCIES.items():
+        if q in {_search_key(t) for t in [code, name] + ALIASES.get(code, "").split("|")}:
+            return code
+    return None
 ECB_URL = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml"
 
 
@@ -368,8 +412,10 @@ class Money:
         self.code, self.rate = code, rate
 
     @classmethod
-    def for_currency(cls, code):
-        code = code.upper()
+    def for_currency(cls, text):
+        code = resolve_currency(text)
+        if code is None:
+            raise RuntimeError(f"don't know the currency '{text}' (see --list-currencies)")
         if code == "USD":
             return cls(), None
         info = fetch_rates()
@@ -381,20 +427,21 @@ class Money:
     def __call__(self, usd, compact=False):
         v = usd * self.rate
         dec = 0 if self.code in ZERO_DECIMALS else 2
-        a, prefix = abs(v), "-" if v < 0 else ""
+        a, lead = abs(v), "-" if v < 0 else ""
         if compact and a >= 1000:
             for unit, size in (("B", 1e9), ("M", 1e6), ("K", 1e3)):
                 if a >= size:
                     num = f"{a / size:.1f}".rstrip("0").rstrip(".") + unit
                     break
         elif 0 < a < 10 ** -dec:
-            prefix, num = "<", f"{10 ** -dec:.{dec}f}"
+            lead, num = "<", f"{10 ** -dec:.{dec}f}"
         elif compact and a >= 100:
             num = f"{a:,.0f}"
         else:
             num = f"{a:,.{dec}f}"
-        sym = SYMBOLS.get(self.code)
-        return f"{prefix}{sym}{num}" if sym else f"{prefix}{num} {self.code}"
+        sym, after, space = MONEY_STYLE.get(self.code, (self.code, 0, 1))
+        gap = " " if space else ""
+        return f"{lead}{num}{gap}{sym}" if after else f"{lead}{sym}{gap}{num}"
 
 
 # ─────────────────────────────── terminal ───────────────────────────────
@@ -781,7 +828,7 @@ def main():
     ap.add_argument("--since", metavar="YYYY-MM-DD", help="first day (inclusive)")
     ap.add_argument("--until", metavar="YYYY-MM-DD", help="last day (inclusive)")
     ap.add_argument("--by", choices=["model", "project", "session", "day", "week", "month"], help="print a table grouped by this")
-    ap.add_argument("--currency", default="USD", metavar="CODE", help="show costs in this currency (ECB rates), e.g. EUR, GBP, HUF")
+    ap.add_argument("--currency", default="USD", metavar="CODE", help="show costs in this currency (ECB rates): a code like EUR or a country like 'hungary'")
     ap.add_argument("--top", type=int, default=6, help="rows per section in the summary (default 6)")
     ap.add_argument("--json", action="store_true", help="machine-readable output")
     ap.add_argument("--csv", action="store_true", help="CSV table (implies --by day unless --by is given)")
@@ -793,6 +840,7 @@ def main():
     if args.list_currencies:
         for code, name in CURRENCIES.items():
             print(f"{code}  {name}")
+        print("\n--currency also takes country names, e.g. --currency hungary or --currency \"united states\".")
         return
     if args.days < 1:
         ap.error("--days must be at least 1")

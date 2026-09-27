@@ -731,34 +731,50 @@ const store = {
 
 const int = new Intl.NumberFormat("en-US");
 
-/* Money is stored converted into the display currency (see applyFx); these only format it. */
+/* Money is stored converted into the display currency (see applyFx); these only format it.
+   Each currency is written the way it is at home: which side the symbol goes on, and whether a
+   space separates it (219,532 Ft · 5,396.58 € · $687.99 · R$ 1,234.50). Symbols that would be
+   ambiguous in an English interface get their distinct form (CA$, HK$, CN¥). Digits keep the
+   English 1,234.56 style, like the rest of the page. [symbol, after the number?, space?] */
+const MONEY_STYLE = {
+  USD: ["$", 0, 0], EUR: ["€", 1, 1], GBP: ["£", 0, 0], JPY: ["¥", 0, 0], CHF: ["CHF", 0, 1],
+  CAD: ["CA$", 0, 0], AUD: ["A$", 0, 0], NZD: ["NZ$", 0, 0], CNY: ["CN¥", 0, 0], HKD: ["HK$", 0, 0],
+  SGD: ["S$", 0, 0], KRW: ["₩", 0, 0], INR: ["₹", 0, 0], IDR: ["Rp", 0, 1], MYR: ["RM", 0, 0],
+  PHP: ["₱", 0, 0], THB: ["฿", 0, 0], ILS: ["₪", 1, 1], TRY: ["₺", 0, 0], ZAR: ["R", 0, 1],
+  BRL: ["R$", 0, 1], MXN: ["MX$", 0, 0], SEK: ["kr", 1, 1], NOK: ["kr", 1, 1], DKK: ["kr.", 1, 1],
+  ISK: ["kr.", 1, 1], PLN: ["zł", 1, 1], CZK: ["Kč", 1, 1], HUF: ["Ft", 1, 1], RON: ["lei", 1, 1],
+};
 const ZERO_DECIMALS = new Set(["JPY", "KRW", "ISK", "HUF", "IDR"]);
-// Where the short local symbol would be ambiguous ($, ¥, kr), show the distinct form: CA$, CN¥, SEK…
-const AMBIGUOUS_SYMBOL = new Set(["CAD", "AUD", "NZD", "HKD", "SGD", "MXN", "CNY", "SEK", "NOK", "DKK", "ISK"]);
 const nfCache = new Map();
 function nf(opts) {
   const key = JSON.stringify(opts);
   if (!nfCache.has(key)) nfCache.set(key, new Intl.NumberFormat("en-US", opts));
   return nfCache.get(key);
 }
-function moneyOpts(extra) {
-  const code = S.fx.code, d = ZERO_DECIMALS.has(code) ? 0 : 2;
-  const display = AMBIGUOUS_SYMBOL.has(code) ? "symbol" : "narrowSymbol";
-  return Object.assign({ style: "currency", currency: code, currencyDisplay: display, minimumFractionDigits: d, maximumFractionDigits: d }, extra);
+/* An amount's pieces: sign, the digits (always positive), the symbol and where it goes. */
+function moneyParts(v, numberOpts) {
+  const code = S.fx.code;
+  const [sym, after, space] = MONEY_STYLE[code] || [code, 0, 1];
+  const d = ZERO_DECIMALS.has(code) ? 0 : 2;
+  const num = nf(Object.assign({ minimumFractionDigits: d, maximumFractionDigits: d }, numberOpts)).format(Math.abs(v));
+  return { sign: v < 0 ? "−" : "", num, sym, after: !!after, gap: space ? " " : "" };
 }
+const joinMoney = p => p.sign + (p.after ? p.num + p.gap + p.sym : p.sym + p.gap + p.num);
 function fmtMoney(v) {
-  if (!v) return nf(moneyOpts()).format(0);
   const smallest = ZERO_DECIMALS.has(S.fx.code) ? 1 : 0.01;
-  if (Math.abs(v) < smallest) return (v < 0 ? "−<" : "<") + nf(moneyOpts()).format(smallest);
-  return nf(moneyOpts()).format(v);
+  if (v && Math.abs(v) < smallest) return "<" + joinMoney(moneyParts(smallest));
+  return joinMoney(moneyParts(v || 0));
 }
-/* Short form for axes and tight spots: $1.2K, Ft245K, €12. */
+/* With a chosen number of decimals (price tables). */
+function fmtMoneyDigits(v, min, max) {
+  return joinMoney(moneyParts(v, { minimumFractionDigits: min, maximumFractionDigits: max }));
+}
+/* Short form for axes and tight spots: $1.2K, 245K Ft, 12 €. */
 function fmtMoneyC(v) {
   const a = Math.abs(v);
-  if (a === 0) return nf(moneyOpts({ minimumFractionDigits: 0, maximumFractionDigits: 0 })).format(0);
-  if (a >= 1000) return nf(moneyOpts({ notation: "compact", minimumFractionDigits: 0, maximumFractionDigits: a >= 1e4 && a < 1e6 ? 0 : 1 })).format(v);
-  const digits = ZERO_DECIMALS.has(S.fx.code) || a >= 10 ? 0 : a >= 1 ? 1 : 2;
-  return nf(moneyOpts({ minimumFractionDigits: 0, maximumFractionDigits: digits })).format(v);
+  if (a >= 1000) return joinMoney(moneyParts(v, { notation: "compact", minimumFractionDigits: 0, maximumFractionDigits: a >= 1e4 && a < 1e6 ? 0 : 1 }));
+  const digits = ZERO_DECIMALS.has(S.fx.code) || a >= 10 || a === 0 ? 0 : a >= 1 ? 1 : 2;
+  return joinMoney(moneyParts(v, { minimumFractionDigits: 0, maximumFractionDigits: digits }));
 }
 function fmtTok(n) {
   const a = Math.abs(n);
@@ -886,7 +902,8 @@ const S = {
   projLimit: 8,
   ratesAll: false,
   hoverIdx: -1,
-  currency: typeof saved.currency === "string" ? saved.currency : "USD",
+  // A saved currency that's no longer offered (e.g. one the ECB stopped publishing) falls back to USD.
+  currency: typeof saved.currency === "string" && /^[A-Z]{3}$/.test(saved.currency) ? saved.currency : "USD",
   fx: { code: "USD", rate: 1, date: null, stale: false },   // what the numbers are currently shown in
 };
 // URL parameters override saved settings, so any view can be bookmarked:
@@ -1238,12 +1255,15 @@ function renderHero(recs, prev, from, to, label, agg) {
   $("#hero-range").textContent = `${label} · ${describeSpan(from, to)}`;
   const hv = $("#hero-value");
   hv.replaceChildren();
-  // The fraction (and any symbol after it) is set smaller: $631.21, 202 136 Ft.
-  const parts = cost >= 0.01 ? nf(moneyOpts()).formatToParts(cost) : null;
-  const cut = parts ? parts.findIndex(p => p.type === "decimal") : -1;
-  if (cut > 0) {
-    const text = ps => ps.map(p => p.value).join("");
-    hv.append(document.createTextNode(text(parts.slice(0, cut))), h("span", "cents", text(parts.slice(cut))));
+  // The fraction, and a symbol written after the number, are set smaller: $631.21 · 5,396.58 € · 219,532 Ft.
+  if (cost >= 0.01) {
+    const p = moneyParts(cost);
+    const dot = p.num.indexOf(".");
+    const whole = dot >= 0 ? p.num.slice(0, dot) : p.num, frac = dot >= 0 ? p.num.slice(dot) : "";
+    const big = p.after ? whole : p.sym + p.gap + whole;
+    const small = frac + (p.after ? p.gap + p.sym : "");
+    hv.append(document.createTextNode(big));
+    if (small) hv.append(h("span", "cents", small));
   } else hv.textContent = fmtMoney(cost);
 
   const fx = $("#fx-note");
@@ -2097,7 +2117,7 @@ function renderRates() {
   const m = x => {
     const v = x * S.fx.rate;
     const d = ZERO_DECIMALS.has(S.fx.code) ? (v < 10 ? 1 : 0) : v < 1 ? 3 : 2;
-    return nf(moneyOpts({ minimumFractionDigits: Math.min(d, 2), maximumFractionDigits: d })).format(v);
+    return fmtMoneyDigits(v, Math.min(d, 2), d);
   };
   $("#price-unit").textContent = S.fx.code === "USD" ? "USD per million tokens"
     : `${S.fx.code} per million tokens (converted from USD list prices)`;
@@ -2261,19 +2281,69 @@ popover($("#projects-btn"), $("#projects-panel"), panel => {
    Central Bank's daily reference rates, which the local server fetches only once you pick
    something other than USD. Nothing about your usage is sent anywhere.
    ========================================================================= */
+// [code, name, flag, what people search for: country names (short, formal, native), ISO codes, nicknames]
 const CURRENCIES = [
-  ["USD", "United States Dollar", "us"], ["EUR", "Euro", "eu"], ["GBP", "British Pound", "gb"],
-  ["JPY", "Japanese Yen", "jp"], ["CHF", "Swiss Franc", "ch"], ["CAD", "Canadian Dollar", "ca"],
-  ["AUD", "Australian Dollar", "au"], ["NZD", "New Zealand Dollar", "nz"], ["CNY", "Chinese Yuan", "cn"],
-  ["HKD", "Hong Kong Dollar", "hk"], ["SGD", "Singapore Dollar", "sg"], ["KRW", "South Korean Won", "kr"],
-  ["INR", "Indian Rupee", "in"], ["IDR", "Indonesian Rupiah", "id"], ["MYR", "Malaysian Ringgit", "my"],
-  ["PHP", "Philippine Peso", "ph"], ["THB", "Thai Baht", "th"], ["ILS", "Israeli New Shekel", "il"],
-  ["TRY", "Turkish Lira", "tr"], ["ZAR", "South African Rand", "za"], ["BRL", "Brazilian Real", "br"],
-  ["MXN", "Mexican Peso", "mx"], ["SEK", "Swedish Krona", "se"], ["NOK", "Norwegian Krone", "no"],
-  ["DKK", "Danish Krone", "dk"], ["ISK", "Icelandic Króna", "is"], ["PLN", "Polish Złoty", "pl"],
-  ["CZK", "Czech Koruna", "cz"], ["HUF", "Hungarian Forint", "hu"], ["RON", "Romanian Leu", "ro"],
-].map(([code, name, flag]) => ({ code, name, flag }));
+  ["USD", "United States Dollar", "us", "us|usa|u.s.|u.s.a.|america|united states|united states of america|the united states of america|american dollar|dollar|buck|greenback|$"],
+  ["EUR", "Euro", "eu", "eu|eur|europe|european union|eurozone|euro area|germany|deutschland|france|italy|spain|netherlands|holland|belgium|austria|ireland|portugal|finland|greece|slovakia|slovenia|estonia|latvia|lithuania|luxembourg|malta|cyprus|croatia|bulgaria|€"],
+  ["GBP", "British Pound", "gb", "uk|gb|gbr|united kingdom|the united kingdom|great britain|britain|england|scotland|wales|northern ireland|pound|pound sterling|sterling|quid|£"],
+  ["JPY", "Japanese Yen", "jp", "jp|jpn|japan|nippon|nihon|yen|¥"],
+  ["CHF", "Swiss Franc", "ch", "ch|che|switzerland|swiss|schweiz|suisse|svizzera|liechtenstein|franc|franken"],
+  ["CAD", "Canadian Dollar", "ca", "ca|can|canada|loonie"],
+  ["AUD", "Australian Dollar", "au", "au|aus|australia|aussie dollar"],
+  ["NZD", "New Zealand Dollar", "nz", "nz|nzl|new zealand|aotearoa|kiwi"],
+  ["CNY", "Chinese Yuan", "cn", "cn|chn|china|prc|people's republic of china|the people's republic of china|renminbi|rmb|yuan"],
+  ["HKD", "Hong Kong Dollar", "hk", "hk|hkg|hong kong"],
+  ["SGD", "Singapore Dollar", "sg", "sg|sgp|singapore"],
+  ["KRW", "South Korean Won", "kr", "kr|kor|korea|south korea|republic of korea|the republic of korea|won|₩"],
+  ["INR", "Indian Rupee", "in", "in|ind|india|bharat|rupee|₹"],
+  ["IDR", "Indonesian Rupiah", "id", "id|idn|indonesia|rupiah"],
+  ["MYR", "Malaysian Ringgit", "my", "my|mys|malaysia|ringgit"],
+  ["PHP", "Philippine Peso", "ph", "ph|phl|philippines|the philippines|pilipinas|piso"],
+  ["THB", "Thai Baht", "th", "th|tha|thailand|baht"],
+  ["ILS", "Israeli New Shekel", "il", "il|isr|israel|shekel|sheqel|nis"],
+  ["TRY", "Turkish Lira", "tr", "tr|tur|turkey|türkiye|turkiye|lira"],
+  ["ZAR", "South African Rand", "za", "za|zaf|rsa|south africa|rand"],
+  ["BRL", "Brazilian Real", "br", "br|bra|brazil|brasil|real|reais"],
+  ["MXN", "Mexican Peso", "mx", "mx|mex|mexico|méxico|peso"],
+  ["SEK", "Swedish Krona", "se", "se|swe|sweden|sverige|krona"],
+  ["NOK", "Norwegian Krone", "no", "no|nor|norway|norge|krone"],
+  ["DKK", "Danish Krone", "dk", "dk|dnk|denmark|danmark|krone"],
+  ["ISK", "Icelandic Króna", "is", "is|isl|iceland|ísland|island|krona"],
+  ["PLN", "Polish Złoty", "pl", "pl|pol|poland|polska|zloty"],
+  ["CZK", "Czech Koruna", "cz", "cz|cze|czechia|czech republic|the czech republic|česko|cesko|koruna"],
+  ["HUF", "Hungarian Forint", "hu", "hu|hun|hungary|magyarország|magyarorszag|forint"],
+  ["RON", "Romanian Leu", "ro", "ro|rou|romania|românia|leu|lei"],
+].map(([code, name, flag, aliases]) => ({ code, name, flag, terms: [code, name, `${name} (${code})`, ...aliases.split("|")].map(searchKey) }));
 const currencyInfo = code => CURRENCIES.find(c => c.code === code) || CURRENCIES[0];
+
+/* Search: case, accents, dots and a leading "the" don't matter. Exact matches rank first, then
+   names that start with the query, then any word that does — so "us" finds the US dollar, not
+   AUStralia, and "united" finds both the US and the UK. */
+function searchKey(s) {
+  return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
+    .replace(/ł/g, "l").replace(/[.'’]/g, "").replace(/\s+/g, " ").trim().replace(/^the /, "");
+}
+function currencyScore(c, q) {
+  let best = 0;
+  for (const t of c.terms) {
+    if (t === q) return 3;
+    if (t.startsWith(q)) best = Math.max(best, 2);
+    else if (q.length >= 2 && t.split(/[ ()]+/).some(w => w.startsWith(q))) best = Math.max(best, 1);
+  }
+  // Several words ("us dollar", "swiss franc"): each must start some word this currency is known by.
+  const qs = q.split(" ");
+  if (!best && qs.length > 1) {
+    const words = c.terms.flatMap(t => t.split(/[ ()]+/));
+    if (qs.every(w => words.some(x => x.startsWith(w)))) best = 1;
+  }
+  return best;
+}
+function searchCurrencies(query) {
+  const q = searchKey(query);
+  if (!q) return CURRENCIES;
+  return CURRENCIES.map((c, i) => ({ c, i, s: currencyScore(c, q) })).filter(x => x.s > 0)
+    .sort((a, b) => b.s - a.s || a.i - b.i).map(x => x.c);
+}
 
 /* Flat flags on a 24×24 square (cropped like a square flag icon), drawn from shapes — no emoji. */
 const star = (cx, cy, r, fill, rot = 0, extra = "") => {
@@ -2350,10 +2420,11 @@ function renderCurrencyButton(busy) {
 }
 
 let ratesPromise = null;
+let knownRates = null;   // the ECB's rates once fetched: decides which currencies the picker offers
 function getRates() {
   if (!ratesPromise) {
     ratesPromise = fetch("/api/rates", { cache: "no-store" })
-      .then(r => r.json().then(j => { if (!r.ok || j.error) throw new Error(j.error || r.statusText); return j; }))
+      .then(r => r.json().then(j => { if (!r.ok || j.error) throw new Error(j.error || r.statusText); knownRates = j.rates; return j; }))
       .catch(e => { ratesPromise = null; throw e; });   // allow a retry later
   }
   return ratesPromise;
@@ -2372,8 +2443,9 @@ async function setCurrency(code) {
     S.fx = { code, rate: r.rates[code] / r.rates.USD, date: r.date, stale: !!r.stale };
     persist(); applyFx(); render();
   } catch (e) {
+    if (S.currency === code) { S.currency = S.fx.code; persist(); }   // don't retry it on every launch
     $("#banners").prepend(banner("warn", b => b.append(document.createTextNode(
-      `Couldn't switch to ${code}: ${e.message}. Showing US dollars.`))));
+      `Couldn't switch to ${currencyInfo(code).code === code ? currencyInfo(code).name : code}: ${e.message}. Still showing ${currencyInfo(S.fx.code).name}.`))));
   } finally {
     renderCurrencyButton();
   }
@@ -2381,13 +2453,13 @@ async function setCurrency(code) {
 popover($("#currency-btn"), $("#currency-panel"), panel => {
   panel.replaceChildren();
   const search = h("input", "panel-search");
-  search.type = "search"; search.placeholder = "Search currencies…";
+  search.type = "search"; search.placeholder = "Search by currency or country…";
   const list = h("div", "panel-list");
   const draw = () => {
     list.replaceChildren();
-    const q = search.value.trim().toLowerCase();
-    for (const c of CURRENCIES) {
-      if (q && !(c.name + " " + c.code).toLowerCase().includes(q)) continue;
+    for (const c of searchCurrencies(search.value)) {
+      // Once the rates are known, only offer currencies that have one (USD always works).
+      if (knownRates && c.code !== "USD" && !knownRates[c.code]) continue;
       const b = h("button", "opt");
       b.setAttribute("role", "menuitemradio");
       b.setAttribute("aria-checked", String(S.fx.code === c.code));
@@ -2610,6 +2682,7 @@ async function load() {
     endSkeleton();
     render();
     // A saved currency other than USD: get the rates once the numbers are on screen.
+    if (!CURRENCIES.some(c => c.code === S.currency)) { S.currency = "USD"; persist(); }
     if (S.currency !== S.fx.code && !$("#currency-btn").classList.contains("busy")) setCurrency(S.currency);
   } catch (err) {
     setStatus("error", "Couldn't load data");

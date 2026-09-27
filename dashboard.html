@@ -128,7 +128,6 @@ button { cursor: pointer; }
   height: 34px; padding: 0 12px; border-radius: 9px;
   border: 1px solid var(--border-strong); background: var(--surface);
   display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
-  transition: background .12s, border-color .12s;
 }
 .btn:hover { background: var(--hover); }
 .btn.icon { width: 34px; padding: 0; justify-content: center; }
@@ -205,7 +204,6 @@ button { cursor: pointer; }
 .panel-list { max-height: 340px; overflow-y: auto; }
 .ms-row { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 8px; font-size: 13.5px; cursor: pointer; }
 .ms-row:hover { background: var(--hover); }
-.ms-row input { margin: 0; accent-color: var(--s1); width: 15px; height: 15px; flex: none; }
 .ms-row .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ms-row .val { color: var(--muted); font-size: 12px; }
 .ms-row .only { display: none; border: 0; background: none; color: var(--s1); font-size: 12px; padding: 0 4px; font-weight: 600; }
@@ -458,10 +456,11 @@ footer { margin-top: 28px; font-size: 12px; color: var(--muted); display: flex; 
 .maximized .wbtn .i-max { display: none; }
 .maximized .wbtn .i-restore { display: block; }
 .inactive .tb-name, .inactive .tb-mark, .inactive .wbtn svg { opacity: .45; }
-.framed body { padding-top: 40px; }
+.framed body { overflow: hidden; }
+.framed #scroller { position: fixed; inset: 40px 0 0 0; overflow-y: auto; overscroll-behavior: contain; }
 .framed header.top { display: none; }
 .framed .wrap { padding-top: 10px; }
-.framed .filters { top: 48px; }
+.framed .filters { top: 8px; }
 @media (max-width: 720px) { .tb-sub { display: none; } .currency-label { display: none; } }
 
 /* ---------- Squircles ----------
@@ -472,14 +471,15 @@ footer { margin-top: 28px; font-size: 12px; color: var(--muted); display: flex; 
   .brand-mark, .tb-mark, .btn, .btn-link, .filters, .seg, .seg button, .panel, .panel .opt,
   .date-row input[type="date"], .panel-search, .ms-row, .sw, .card, .table-wrap, .rank-row,
   .insight, .heat .cell, .scale .steps i, .search, .banner, #tip, .flag, .skel:not(.round),
-  .banner code, .chart-hint kbd, .ms-row input { corner-shape: squircle; }
+  .banner code, .chart-hint kbd, .cbx, .seg-pill { corner-shape: squircle; }
+  .cbx { border-radius: 7px; }
   .brand-mark { border-radius: 14px; }
   .tb-mark, .flag { border-radius: 8px; }
   .btn { border-radius: 14px; }
   .btn-link { border-radius: 10px; }
   .filters { border-radius: 24px; }
   .seg { border-radius: 15px; }
-  .seg button { border-radius: 11px; }
+  .seg button, .seg-pill { border-radius: 11px; }
   .panel { border-radius: 20px; }
   .panel .opt, .ms-row, .panel-search, .date-row input[type="date"] { border-radius: 12px; }
   .card { border-radius: 28px; }
@@ -491,6 +491,73 @@ footer { margin-top: 28px; font-size: 12px; color: var(--muted); display: flex; 
   .skel { border-radius: 12px; }
   .skel-cols .skel { border-radius: 8px 8px 0 0; }
 }
+
+/* ---------- Motion ----------
+   Hover highlights fade in over 0.3 s; the sliding pill, check marks, carets and chart bands
+   are animated here, and everything else from script (see "Motion" in the script). */
+.btn, .btn-link, .seg button, .chip button, .panel .opt, .ms-row, .rank-row, td, .wbtn,
+.tb-actions .btn.icon, th.sortable, .foot-link {
+  transition: background-color .3s ease, color .3s ease, border-color .3s ease, box-shadow .3s ease, filter .3s ease;
+}
+.wbtn:active, .btn:active { transition-duration: .05s; }
+.btn .caret { transition: transform .3s cubic-bezier(.2, .8, .2, 1), opacity .3s; }
+.btn[aria-expanded="true"] .caret { transform: rotate(180deg); opacity: .9; }
+.panel { transform-origin: 16px 0; }
+.stack100 .bar > div { transition: filter .3s; }
+.heat .cell { outline: 2px solid transparent; transition: outline-color .3s ease, transform .3s ease; }
+.heat .cell:hover, .heat .cell:focus-visible { outline-color: var(--ink); }
+.hover-band { fill: var(--hover); opacity: 0; transition: opacity .3s ease, transform .18s cubic-bezier(.2, .8, .2, 1); pointer-events: none; }
+.hover-band.on { opacity: 1; }
+#tip { transition: opacity .18s ease, transform .18s ease; }
+.ms-row .only, .ms-row .val { animation: fade-in .3s ease; }
+@keyframes fade-in { from { opacity: 0; } }
+.chip { animation: chip-in .35s cubic-bezier(.3, 1.3, .5, 1); }
+@keyframes chip-in { from { opacity: 0; transform: scale(.85); } }
+.panel .opt .check svg { animation: fade-in .25s ease; }
+
+/* Group-by and other segmented controls: a pill slides to the chosen option. */
+.seg { position: relative; }
+.seg-pill {
+  position: absolute; top: 3px; bottom: 3px; left: 0; border-radius: 7px; pointer-events: none;
+  background: var(--raised); box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 0 0 1px var(--border);
+}
+.seg button { position: relative; z-index: 1; }
+.seg:has(.seg-pill) button[aria-pressed="true"] { background: transparent; box-shadow: none; }
+
+/* Checkboxes: the box fills and the tick draws itself. */
+.cbx {
+  appearance: none; -webkit-appearance: none; position: relative; display: grid; place-items: center;
+  width: 16px; height: 16px; margin: 0; flex: none; cursor: pointer; border-radius: 5px;
+  border: 1.5px solid var(--border-strong); background: var(--surface);
+  transition: background-color .22s ease, border-color .22s ease, box-shadow .3s ease;
+}
+.cbx::after {
+  content: ""; width: 10px; height: 10px; clip-path: inset(0 100% 0 0);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m3 8.5 3.2 3L13 4.5'/%3E%3C/svg%3E") center / contain no-repeat;
+  transition: clip-path .25s cubic-bezier(.4, 0, .2, 1);
+}
+.cbx:checked { background: var(--s1); border-color: var(--s1); animation: cbx-pop .3s cubic-bezier(.3, 1.4, .5, 1); }
+.cbx:checked::after { clip-path: inset(0 0 0 0); transition-delay: .05s; }
+.ms-row:hover .cbx:not(:checked) { border-color: color-mix(in srgb, var(--s1), var(--border-strong) 45%); }
+.cbx:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+@keyframes cbx-pop { 50% { transform: scale(.86); } }
+
+/* Custom scrollbars */
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--ink) 20%, transparent);
+  border: 3px solid transparent; background-clip: padding-box; border-radius: 999px; min-height: 40px;
+}
+::-webkit-scrollbar-thumb:hover { background-color: color-mix(in srgb, var(--ink) 34%, transparent); }
+::-webkit-scrollbar-thumb:active { background-color: color-mix(in srgb, var(--ink) 46%, transparent); }
+.panel-list::-webkit-scrollbar, .table-wrap::-webkit-scrollbar { width: 10px; height: 10px; }
+@supports not selector(::-webkit-scrollbar) {
+  * { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink) 24%, transparent) transparent; }
+}
+
+/* Theme switches cross-fade instead of snapping. */
+.theme-fade, .theme-fade * { transition: background-color .35s ease, color .35s ease, border-color .35s ease, fill .35s ease, stroke .35s ease !important; }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
@@ -522,6 +589,8 @@ footer { margin-top: 28px; font-size: 12px; color: var(--muted); display: flex; 
   </div>
 </div>
 
+<!-- In the Windows app this scrolls instead of the page, so the scrollbar starts below the title bar. -->
+<div id="scroller">
 <div class="wrap" id="app">
 
   <header class="top">
@@ -700,6 +769,7 @@ footer { margin-top: 28px; font-size: 12px; color: var(--muted); display: flex; 
     <span>On a Pro or Max plan you aren't billed per token — these figures are what the same usage would cost on the API.</span>
     <span><span id="foot-meta"></span> · Free software (GPL-3.0) · <a class="foot-link" href="https://github.com/Pacsy1/spendlight" target="_blank" rel="noopener">Source code</a></span>
   </footer>
+</div>
 </div>
 
 <div id="tip" role="tooltip"></div>
@@ -1184,6 +1254,57 @@ function aggregate(recs, from, to) {
    ========================================================================= */
 let current = null; // cached aggregate for hover handlers
 
+/* =========================================================================
+   Motion
+   Things animate when *you* change something (group by, range, filters, currency…) and on
+   first load. The once-a-minute refresh and window resizes redraw without animation, and
+   nothing animates when the system asks for reduced motion.
+   ========================================================================= */
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)");
+const EASE = "cubic-bezier(.2, .8, .2, 1)";
+let ANIM = false;
+let SCROLLER = window;   // the element that scrolls: the page, or #scroller in the Windows app
+function update(draw = render) {
+  ANIM = !REDUCED.matches;
+  try { draw(); } finally { ANIM = false; }
+}
+/** el.animate(), but only during an animated render. */
+function anim(el, keyframes, opts) {
+  if (!ANIM || !el) return null;
+  return el.animate(keyframes, Object.assign({ duration: 500, easing: EASE, fill: "backwards" }, opts));
+}
+/** Fade and rise into place. */
+function enter(el, delay = 0, dist = 6) {
+  return anim(el, [{ opacity: 0, transform: `translateY(${dist}px)` }, { opacity: 1, transform: "none" }], { duration: 450, delay });
+}
+/** Count a value from what it showed last time (or from zero at first) to its new value. */
+const shownValues = new Map(), tweenRuns = new Map();
+function tween(key, to, draw, duration = 750) {
+  const from = shownValues.has(key) ? shownValues.get(key) : 0;
+  shownValues.set(key, to);
+  const run = (tweenRuns.get(key) || 0) + 1;
+  tweenRuns.set(key, run);
+  if (!ANIM || from === to || !isFinite(from) || !isFinite(to)) { draw(to); return; }
+  const t0 = performance.now();
+  const step = now => {
+    if (tweenRuns.get(key) !== run) return;          // a newer render took over
+    const k = Math.min(1, (now - t0) / duration);
+    draw(from + (to - from) * (1 - Math.pow(1 - k, 3)));
+    if (k < 1) requestAnimationFrame(step);
+  };
+  draw(from);
+  requestAnimationFrame(step);
+}
+/** Stroke-draw an SVG path. */
+function drawIn(path, delay = 0, duration = 900) {
+  if (!ANIM) return;
+  const len = path.getTotalLength ? path.getTotalLength() : 0;
+  if (!len) return;
+  path.style.strokeDasharray = len;
+  const a = anim(path, [{ strokeDashoffset: len }, { strokeDashoffset: 0 }], { duration, delay, easing: "cubic-bezier(.45, 0, .2, 1)" });
+  if (a) a.onfinish = () => { path.style.strokeDasharray = ""; };
+}
+
 function render() {
   if (!S.data) return;
   const { from, to, label } = rangeBounds();
@@ -1210,16 +1331,10 @@ function renderFilterBar(from, to, label) {
   $("#range-label").textContent = label;
   $("#range-dates").textContent = describeSpan(from, to);
 
-  const gseg = $("#gran-seg");
-  gseg.replaceChildren();
   const resolved = resolveGran(from, to);
-  for (const g of ["auto", ...GRANS]) {
-    const b = h("button", null, g === "auto" ? `Auto` : g[0].toUpperCase() + g.slice(1));
-    b.setAttribute("aria-pressed", String(S.gran === g));
-    if (g === "auto") b.title = `Automatic — currently ${resolved.g}`;
-    b.onclick = () => { S.gran = g; persist(); render(); };
-    gseg.appendChild(b);
-  }
+  segButtons($("#gran-seg"),
+    [["auto", "Auto", `Automatic — currently ${resolved.g}`], ...GRANS.map(g => [g, g[0].toUpperCase() + g.slice(1)])],
+    S.gran, g => { S.gran = g; persist(); update(); });
 
   const d = S.data;
   const ml = $("#models-label");
@@ -1241,7 +1356,7 @@ function renderFilterBar(from, to, label) {
     const x = h("button");
     x.setAttribute("aria-label", "Clear session filter");
     x.innerHTML = '<svg width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m2 2 6 6M8 2 2 8"/></svg>';
-    x.onclick = () => { S.session = null; render(); };
+    x.onclick = () => { S.session = null; update(); };
     chip.appendChild(x);
     host.appendChild(chip);
   }
@@ -1254,17 +1369,21 @@ function renderHero(recs, prev, from, to, label, agg) {
   const cost = recs.reduce((s, r) => s + r[R.cost], 0);
   $("#hero-range").textContent = `${label} · ${describeSpan(from, to)}`;
   const hv = $("#hero-value");
-  hv.replaceChildren();
   // The fraction, and a symbol written after the number, are set smaller: $631.21 · 5,396.58 € · 219,532 Ft.
-  if (cost >= 0.01) {
-    const p = moneyParts(cost);
-    const dot = p.num.indexOf(".");
-    const whole = dot >= 0 ? p.num.slice(0, dot) : p.num, frac = dot >= 0 ? p.num.slice(dot) : "";
-    const big = p.after ? whole : p.sym + p.gap + whole;
-    const small = frac + (p.after ? p.gap + p.sym : "");
-    hv.append(document.createTextNode(big));
-    if (small) hv.append(h("span", "cents", small));
-  } else hv.textContent = fmtMoney(cost);
+  const writeHero = v => {
+    hv.replaceChildren();
+    if (v >= 0.01) {
+      const p = moneyParts(v);
+      const dot = p.num.indexOf(".");
+      const whole = dot >= 0 ? p.num.slice(0, dot) : p.num, frac = dot >= 0 ? p.num.slice(dot) : "";
+      const big = p.after ? whole : p.sym + p.gap + whole;
+      const small = frac + (p.after ? p.gap + p.sym : "");
+      hv.append(document.createTextNode(big));
+      if (small) hv.append(h("span", "cents", small));
+    } else hv.textContent = fmtMoney(v);
+  };
+  tween("hero|" + S.fx.code, cost, writeHero, 900);
+  enter($("#hero-range"), 0, 4);
 
   const fx = $("#fx-note");
   fx.hidden = S.fx.code === "USD";
@@ -1291,13 +1410,25 @@ function renderHero(recs, prev, from, to, label, agg) {
   } else {
     del.append(h("span", null, `${int.format(recs.length)} API calls since ${dfDayY.format(from)}`));
   }
+  enter(del, 120, 4);
 
-  // Sparkline of spend per bucket.
+  // Sparkline of spend over the range. It keeps its own resolution (the "Auto" one), so grouping
+  // the chart by week or month can't flatten it to a single point.
   const svg = $("#spark");
   svg.replaceChildren();
   const w = svg.clientWidth || 300, H = 56;
   svg.setAttribute("viewBox", `0 0 ${w} ${H}`);
-  const bs = agg.buckets;
+  const days = (to - from) / 864e5;
+  const sg = days <= 3 ? "hour" : days <= 120 ? "day" : days <= 730 ? "week" : "month";
+  const bs = sg === agg.g ? agg.buckets : buildBuckets(from, to, sg).map(b => Object.assign(b, { cost: 0 }));
+  if (bs !== agg.buckets) {
+    let j = 0;
+    for (const r of recs) {
+      const t = r[R.t] * 1000;
+      while (j < bs.length - 1 && t >= bs[j].end.getTime()) j++;
+      if (bs[j]) bs[j].cost += r[R.cost];
+    }
+  }
   if (bs.length < 2) return;
   const max = Math.max(...bs.map(b => b.cost)) || 1;
   const x = i => 4 + (i / (bs.length - 1)) * (w - 8);
@@ -1308,11 +1439,16 @@ function renderHero(recs, prev, from, to, label, agg) {
   area.style.fill = "var(--s1)"; area.style.opacity = "0.08";
   const line = sv("path", { d, fill: "none", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
   line.style.stroke = "var(--s1)";
+  // The line draws itself left to right, the wash fades in under it.
+  drawIn(line, 80, 1000);
+  anim(area, [{ opacity: 0 }, { opacity: 0.08 }], { duration: 700, delay: 500 });
   // Mark the peak bucket.
   let pi = 0; bs.forEach((b, i) => { if (b.cost > bs[pi].cost) pi = i; });
   if (bs[pi].cost > 0) {
     const c = sv("circle", { cx: x(pi), cy: y(bs[pi].cost), r: 4, "stroke-width": 2 }, svg);
     c.style.fill = "var(--s1)"; c.style.stroke = "var(--surface)";
+    c.style.transformBox = "fill-box"; c.style.transformOrigin = "center";
+    anim(c, [{ transform: "scale(0)" }, { transform: "scale(1.35)", offset: 0.7 }, { transform: "scale(1)" }], { duration: 450, delay: 80 + 1000 * (pi / (bs.length - 1)) });
   }
 }
 
@@ -1341,53 +1477,79 @@ function renderTiles(recs, from, to) {
   const elapsedDays = Math.max((Math.min(to.getTime(), Date.now()) - from.getTime()) / 864e5, 1 / 24);
   const pace = cost / elapsedDays * 30.44;
 
+  // raw + fmt so each value can count from what it showed before.
+  const money = S.fx.code;
   const tiles = [
-    { icon: "tokens", label: "Tokens processed", value: fmtTok(tok), sub: `${fmtTok(out)} output · ${fmtTok(inAll)} input`, title: int.format(tok) + " tokens" },
-    { icon: "calls", label: "API calls", value: int.format(recs.length), sub: `across ${int.format(sessions.size)} session${sessions.size === 1 ? "" : "s"}` },
-    { icon: "day", label: "Per active day", value: fmtMoney(days.size ? cost / days.size : 0), sub: `${days.size} active day${days.size === 1 ? "" : "s"} in range` },
-    { icon: "cache", label: "Cache hit rate", value: fmtPct(hit, 1), sub: "of input tokens read from cache", meter: hit },
-    { icon: "saved", label: "Saved by caching", value: fmtMoney(saved), sub: noCache > 0 && cost > 0 ? `${(noCache / cost).toFixed(1)}× cheaper than ${fmtMoneyC(noCache)} uncached` : "vs. no prompt caching" },
-    { icon: "pace", label: "Monthly pace", value: fmtMoney(pace), sub: "projected from this range's daily rate" },
+    { key: "tok", icon: "tokens", label: "Tokens processed", raw: tok, fmt: fmtTok, sub: `${fmtTok(out)} output · ${fmtTok(inAll)} input`, title: int.format(tok) + " tokens" },
+    { key: "calls", icon: "calls", label: "API calls", raw: recs.length, fmt: v => int.format(Math.round(v)), sub: `across ${int.format(sessions.size)} session${sessions.size === 1 ? "" : "s"}` },
+    { key: "day|" + money, icon: "day", label: "Per active day", raw: days.size ? cost / days.size : 0, fmt: fmtMoney, sub: `${days.size} active day${days.size === 1 ? "" : "s"} in range` },
+    { key: "hit", icon: "cache", label: "Cache hit rate", raw: hit, fmt: v => fmtPct(v, 1), sub: "of input tokens read from cache", meter: hit },
+    { key: "saved|" + money, icon: "saved", label: "Saved by caching", raw: saved, fmt: fmtMoney, sub: noCache > 0 && cost > 0 ? `${(noCache / cost).toFixed(1)}× cheaper than ${fmtMoneyC(noCache)} uncached` : "vs. no prompt caching" },
+    { key: "pace|" + money, icon: "pace", label: "Monthly pace", raw: pace, fmt: fmtMoney, sub: "projected from this range's daily rate" },
   ];
   const host = $("#tiles");
+  const oldMeter = host.querySelector(".meter > div");
+  const meterFrom = oldMeter ? oldMeter.style.width : "0%";
   host.replaceChildren();
-  for (const t of tiles) {
+  tiles.forEach((t, i) => {
     const c = h("div", "card tile");
     const l = h("div", "tile-label");
     l.innerHTML = ICONS[t.icon];
     l.append(document.createTextNode(t.label));
-    const v = h("div", "tile-value", t.value);
+    const v = h("div", "tile-value");
     if (t.title) v.title = t.title;
+    tween("tile|" + t.key, t.raw, x => { v.textContent = t.fmt(x); }, 800);
     c.append(l, v);
     if (t.meter != null) {
       const m = h("div", "meter"), f = h("div");
-      f.style.width = (t.meter * 100).toFixed(1) + "%";
+      const w = (t.meter * 100).toFixed(1) + "%";
+      f.style.width = w;
+      anim(f, [{ width: meterFrom }, { width: w }], { duration: 800 });
       m.appendChild(f); c.appendChild(m);
     }
-    c.appendChild(h("div", "tile-sub", t.sub));
+    const sub = h("div", "tile-sub", t.sub);
+    c.appendChild(sub);
     host.appendChild(c);
-  }
+    enter(sub, 60 + i * 40, 3);
+  });
 }
 
 /* ---------- Main chart ---------- */
+/* Segmented control: a highlight pill slides to the chosen option. The buttons are rebuilt on
+   every render, so the pill remembers where it was and glides from there. */
 function segButtons(host, options, currentVal, onPick) {
+  const prev = host._pillAt;
   host.replaceChildren();
+  const pill = h("span", "seg-pill");
+  host.appendChild(pill);
+  let active = null;
   for (const [val, label, title] of options) {
     const b = h("button", null, label);
     b.setAttribute("aria-pressed", String(currentVal === val));
     if (title) b.title = title;
-    b.onclick = () => onPick(val);
+    b.onclick = () => { if (val !== currentVal) onPick(val); };
     host.appendChild(b);
+    if (currentVal === val) active = b;
+  }
+  if (!active || !active.offsetWidth) { pill.style.opacity = "0"; host._pillAt = null; return; }
+  const to = { x: active.offsetLeft, w: active.offsetWidth };
+  host._pillAt = to;
+  pill.style.width = to.w + "px";
+  pill.style.transform = `translateX(${to.x}px)`;
+  if (prev && (prev.x !== to.x || prev.w !== to.w) && !REDUCED.matches) {
+    pill.animate([{ transform: `translateX(${prev.x}px)`, width: prev.w + "px" },
+                  { transform: `translateX(${to.x}px)`, width: to.w + "px" }],
+                 { duration: 420, easing: "cubic-bezier(.3, 1.3, .5, 1)" });
   }
 }
 const GRAN_ADJ = { hour: "Hourly", day: "Daily", week: "Weekly", month: "Monthly" };
 
 function renderMain() {
   const { agg, recs } = current;
-  segButtons($("#metric-seg"), [["cost", "Cost"], ["tokens", "Tokens"]], S.metric, v => { S.metric = v; persist(); render(); });
-  segButtons($("#breakdown-seg"), [["model", "Model"], ["tokens", "Token type"], ["project", "Project"]], S.breakdown, v => { S.breakdown = v; persist(); render(); });
-  segButtons($("#mode-seg"), [["bars", "Bars", "Spend per period"], ["cumulative", "Cumulative", "Running total"]], S.mode, v => { S.mode = v; persist(); render(); });
-  segButtons($("#view-seg"), [["chart", "Chart"], ["table", "Table"]], S.view, v => { S.view = v; render(); });
+  segButtons($("#metric-seg"), [["cost", "Cost"], ["tokens", "Tokens"]], S.metric, v => { S.metric = v; persist(); update(); });
+  segButtons($("#breakdown-seg"), [["model", "Model"], ["tokens", "Token type"], ["project", "Project"]], S.breakdown, v => { S.breakdown = v; persist(); update(); });
+  segButtons($("#mode-seg"), [["bars", "Bars", "Spend per period"], ["cumulative", "Cumulative", "Running total"]], S.mode, v => { S.mode = v; persist(); update(); });
+  segButtons($("#view-seg"), [["chart", "Chart"], ["table", "Table"]], S.view, v => { S.view = v; update(); });
 
   const isCost = S.metric === "cost";
   $("#main-title").textContent = (isCost ? "Spend" : "Tokens") + (S.mode === "cumulative" ? " — running total" : " over time");
@@ -1397,6 +1559,7 @@ function renderMain() {
   for (const b of agg.buckets) if (!peak || b.total > peak.total) peak = b;
   if (peak && peak.total > 0 && S.mode === "bars") sub += ` · peak ${bucketTitle(peak, agg.g)}: ${isCost ? fmtMoney(peak.total) : fmtTok(peak.total) + " tokens"}`;
   $("#main-sub").textContent = sub;
+  enter($("#main-sub"), 0, 3);
 
   // Legend: always present for >= 2 series.
   const lg = $("#main-legend");
@@ -1411,6 +1574,7 @@ function renderMain() {
       li.append(sw, h("span", null, s.label + " "), h("b", null, fmtV(agg.totals[k])));
       if (s.title) li.title = s.title;
       lg.appendChild(li);
+      enter(li, 40 * lg.children.length, 4);
     });
   }
 
@@ -1419,7 +1583,7 @@ function renderMain() {
   $("#main-hint").firstElementChild.textContent = agg.g === "hour" ? "Hover for details"
     : `Click a ${S.mode === "cumulative" ? "point" : "bar"} to drill in`;
   if (!recs.length) { host.replaceChildren(emptyState("No usage in this range", "Try a wider date range or clear filters.")); return; }
-  if (S.view === "table") return renderMainTable(host, agg);
+  if (S.view === "table") { renderMainTable(host, agg); enter(host.firstChild, 0, 8); return; }
   drawMainChart(host, agg);
 }
 
@@ -1521,8 +1685,8 @@ function drawMainChart(host, agg) {
   }
 
   // Hover band (behind marks)
-  const hoverBand = sv("rect", { x: 0, y: M.t, width: 0, height: ph, rx: 6, visibility: "hidden" }, svg);
-  hoverBand.style.fill = "var(--hover)";
+  // Fades in over 0.3 s and glides between bars (see .hover-band).
+  const hoverBand = sv("rect", { x: 0, y: M.t, width: 0, height: ph, rx: 6, class: "hover-band" }, svg);
   const selRect = sv("rect", { x: 0, y: M.t, width: 0, height: ph, rx: 6, visibility: "hidden" }, svg);
   selRect.style.fill = "var(--active)";
   selRect.style.stroke = "var(--focus)";
@@ -1534,9 +1698,14 @@ function drawMainChart(host, agg) {
   if (!cumulative) {
     const barW = Math.max(1, Math.min(24, band * 0.72));
     const gapOn = barW >= 4 && ph > 60;
+    const stagger = Math.min(22, 520 / Math.max(1, n));   // the whole wave takes about half a second
     bs.forEach((b, i) => {
       if (!b.total) return;
       const x0 = cx(i) - barW / 2;
+      // One group per bar, so the stacked bar grows from the baseline as a single piece.
+      const bar = sv("g", null, marks);
+      bar.style.transformBox = "view-box";
+      bar.style.transformOrigin = `${cx(i)}px ${y(0)}px`;
       let lastK = -1;
       for (let k = ns - 1; k >= 0; k--) if (b.vals[k] > 0) { lastK = k; break; }
       let base = y(0), drawn = 0;
@@ -1548,12 +1717,13 @@ function drawMainChart(host, agg) {
         const gap = gapOn && drawn > 0 ? 2 : 0;
         const hgt = segH - gap;
         if (hgt > 0.3) {
-          const p = sv("path", { d: k === lastK ? roundedTop(x0, topY, barW, hgt, 4) : `M${x0},${topY}h${barW}v${hgt}h${-barW}Z` }, marks);
+          const p = sv("path", { d: k === lastK ? roundedTop(x0, topY, barW, hgt, 4) : `M${x0},${topY}h${barW}v${hgt}h${-barW}Z` }, bar);
           p.style.fill = agg.series[k].color;
         }
         base = topY;
         drawn++;
       }
+      anim(bar, [{ transform: "scaleY(0)" }, { transform: "scaleY(1)" }], { duration: 650, delay: i * stagger, easing: "cubic-bezier(.2, .9, .25, 1.08)" });
     });
     // Direct label on the peak only.
     let pi = 0; bs.forEach((b, i) => { if (b.total > bs[pi].total) pi = i; });
@@ -1562,6 +1732,7 @@ function drawMainChart(host, agg) {
       const lx = Math.min(Math.max(cx(pi), M.l + 20), W - M.r - 20);
       const lbl = sv("text", { x: lx, y: y(bs[pi].total) - 7, "text-anchor": "middle", class: "label-text" }, svg);
       lbl.textContent = txt;
+      anim(lbl, [{ opacity: 0, transform: "translateY(4px)" }, { opacity: 1, transform: "none" }], { duration: 400, delay: pi * stagger + 450 });
     }
   } else {
     // Series running totals as 2px lines; overall total with a soft wash.
@@ -1572,20 +1743,27 @@ function drawMainChart(host, agg) {
     const mainColor = showTotal ? "var(--ink-2)" : agg.series[0].color;
     const area = sv("path", { d: pathFor(mainK) + `L${cx(n - 1)},${y(0)}L${cx(0)},${y(0)}Z` }, marks);
     area.style.fill = mainColor; area.style.opacity = "0.07";
+    anim(area, [{ opacity: 0 }, { opacity: 0.07 }], { duration: 700, delay: 600 });
     if (showTotal) {
+      let order = 0;
       for (let k = 0; k < ns; k++) {
         if (!agg.totals[k]) continue;
         const p = sv("path", { d: pathFor(k), fill: "none", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, marks);
         p.style.stroke = agg.series[k].color;
+        drawIn(p, 80 + order++ * 90, 1000);
       }
     }
     const tp = sv("path", { d: pathFor(mainK), fill: "none", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, marks);
     tp.style.stroke = mainColor;
+    drawIn(tp, 0, 1100);
     const endV = cum[n - 1][mainK];
     const dot = sv("circle", { cx: cx(n - 1), cy: y(endV), r: 4, "stroke-width": 2 }, marks);
     dot.style.fill = mainColor; dot.style.stroke = "var(--surface)";
+    dot.style.transformBox = "fill-box"; dot.style.transformOrigin = "center";
+    anim(dot, [{ transform: "scale(0)" }, { transform: "scale(1.35)", offset: 0.7 }, { transform: "scale(1)" }], { duration: 450, delay: 1050 });
     const lbl = sv("text", { x: cx(n - 1) - 8, y: y(endV) - 10, "text-anchor": "end", class: "label-text" }, svg);
     lbl.textContent = (showTotal ? "Total " : "") + (isCost ? fmtMoney(endV) : fmtTok(endV));
+    anim(lbl, [{ opacity: 0 }, { opacity: 1 }], { duration: 400, delay: 1100 });
   }
 
   // X ticks — on hourly charts snap to clock-friendly steps so midnights (dates) always get a label.
@@ -1622,9 +1800,17 @@ function drawMainChart(host, agg) {
   function highlight(i, clientX, clientY) {
     S.hoverIdx = i;
     const b = bs[i];
-    hoverBand.setAttribute("x", M.l + band * i + (band > 8 ? 1 : 0));
+    const bx = M.l + band * i + (band > 8 ? 1 : 0);
+    if (!hoverBand.classList.contains("on")) {
+      // Arriving from outside: appear in place (fade only), don't slide in from the last spot.
+      hoverBand.style.transition = "opacity .3s";
+      hoverBand.style.transform = `translateX(${bx}px)`;
+      hoverBand.getBoundingClientRect();
+      hoverBand.style.transition = "";
+    }
+    hoverBand.style.transform = `translateX(${bx}px)`;
     hoverBand.setAttribute("width", Math.max(band - (band > 8 ? 2 : 0), 1));
-    hoverBand.setAttribute("visibility", cumulative ? "hidden" : "visible");
+    hoverBand.classList.toggle("on", !cumulative);
     hoverDots.replaceChildren();
     if (cumulative) {
       cross.setAttribute("x1", cx(i)); cross.setAttribute("x2", cx(i));
@@ -1661,7 +1847,7 @@ function drawMainChart(host, agg) {
   }
   function clearHighlight() {
     S.hoverIdx = -1;
-    hoverBand.setAttribute("visibility", "hidden");
+    hoverBand.classList.remove("on");
     cross.setAttribute("visibility", "hidden");
     hoverDots.replaceChildren();
     hideTip();
@@ -1726,11 +1912,12 @@ function zoomTo(from, to) {
     : { preset: "custom", fromMs: f.getTime(), toMs: t.getTime() };
   if (S.gran !== "auto") S.gran = "auto";
   persist();
-  render();
+  update();
 }
 
 /* ---------- Ranked bars ---------- */
-function rankRow({ color, name, sub, value, share, valueSub, selected, onClick, title }) {
+const barWidths = new Map();   // key -> width last shown, so bars slide from there
+function rankRow({ key, index = 0, color, name, sub, value, share, valueSub, selected, onClick, title }) {
   const row = h("button", "rank-row" + (selected ? " sel" : ""));
   if (title) row.title = title;
   const nm = h("div", "rank-name");
@@ -1741,13 +1928,18 @@ function rankRow({ color, name, sub, value, share, valueSub, selected, onClick, 
   nm.append(sw, txt);
   const bar = h("div", "rank-bar");
   const fill = h("div");
-  fill.style.width = Math.max(share * 100, 0.4) + "%";
+  const w = Math.max(share * 100, 0.4);
+  fill.style.width = w + "%";
   fill.style.background = color;
   bar.appendChild(fill);
+  const was = barWidths.get(key);
+  barWidths.set(key, w);
+  anim(fill, [{ width: (was ?? 0) + "%" }, { width: w + "%" }], { duration: 750, delay: index * 45 });
   const v = h("div", "rank-val");
   v.append(h("b", null, value), h("span", null, valueSub));
   row.append(nm, bar, v);
   row.onclick = onClick;
+  if (was == null) enter(row, index * 45, 6);   // rows new to the list fade in
   return row;
 }
 
@@ -1769,8 +1961,9 @@ function renderModels(recs) {
   const g = groupBy(recs, R.m);
   const total = [...g.values()].reduce((s, x) => s + x.cost, 0) || 1;
   const max = Math.max(...[...g.values()].map(x => x.cost)) || 1;
-  [...g.entries()].sort((a, b) => b[1].cost - a[1].cost).forEach(([mi, x]) => {
+  [...g.entries()].sort((a, b) => b[1].cost - a[1].cost).forEach(([mi, x], index) => {
     host.appendChild(rankRow({
+      key: "m" + d.models[mi], index,
       color: modelColor(mi),
       name: modelName(d.models[mi]),
       sub: `${fmtTok(x.tok)} tokens · ${int.format(x.calls)} calls`,
@@ -1781,7 +1974,7 @@ function renderModels(recs) {
       title: d.models[mi],
       onClick: () => {
         S.models = S.models.size === 1 && S.models.has(mi) ? new Set() : new Set([mi]);
-        render();
+        update();
       },
     }));
   });
@@ -1798,9 +1991,10 @@ function renderProjects(recs) {
   const max = rows[0][1].cost || 1;
   const sessCount = new Map();
   for (const r of recs) { if (!sessCount.has(r[R.p])) sessCount.set(r[R.p], new Set()); sessCount.get(r[R.p]).add(r[R.s]); }
-  rows.slice(0, S.projLimit).forEach(([pi, x]) => {
+  rows.slice(0, S.projLimit).forEach(([pi, x], index) => {
     const ns = sessCount.get(pi).size;
     host.appendChild(rankRow({
+      key: "p" + d.projects[pi].path, index,
       color: "var(--s1)",   // one measure, one color — magnitude is carried by length
       name: d.projects[pi].label,
       sub: `${ns} session${ns === 1 ? "" : "s"} · ${fmtTok(x.tok)} tokens`,
@@ -1811,7 +2005,7 @@ function renderProjects(recs) {
       title: d.projects[pi].path,
       onClick: () => {
         S.projects = S.projects.size === 1 && S.projects.has(pi) ? new Set() : new Set([pi]);
-        render();
+        update();
       },
     }));
   });
@@ -1875,6 +2069,7 @@ function renderTokens(recs) {
       bar.appendChild(seg);
     }
     grid.appendChild(bar);
+    anim(bar, [{ clipPath: "inset(0 100% 0 0 round 6px)" }, { clipPath: "inset(0 0 0 0 round 6px)" }], { duration: 800, delay: lab === "Cost" ? 120 : 0 });
   }
   host.appendChild(grid);
 
@@ -1952,6 +2147,7 @@ function renderHeatmap(recs) {
       cell.onfocus = () => show(...anchorOf(cell));
       cell.onblur = hideTip;
       grid.appendChild(cell);
+      if (c.v > 0) anim(cell, [{ opacity: 0, transform: "scale(.4)" }, { opacity: 1, transform: "none" }], { duration: 380, delay: hr * 14 + di * 22 });
     });
   });
   host.appendChild(grid);
@@ -2054,7 +2250,7 @@ function renderSessions(recs) {
       const act = () => {
         if (S.sessSort.key === k) S.sessSort.dir *= -1;
         else S.sessSort = { key: k, dir: k === "title" || k === "project" ? 1 : -1 };
-        renderSessions(current.recs);
+        update(() => renderSessions(current.recs));
       };
       th.onclick = act;
       th.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); act(); } };
@@ -2091,10 +2287,12 @@ function renderSessions(recs) {
     const cb = h("span", "costbar"), cbi = h("i"); cbi.style.width = (s.cost / maxCost * 100).toFixed(1) + "%"; cb.appendChild(cbi);
     tdX.append(cb, h("b", null, fmtMoney(s.cost)));
     tr.append(tdT, tdP, tdS, tdD, tdM, tdC, tdK, tdX);
-    const pick = () => { S.session = S.session === s.i ? null : s.i; window.scrollTo({ top: 0, behavior: "smooth" }); render(); };
+    const pick = () => { S.session = S.session === s.i ? null : s.i; SCROLLER.scrollTo({ top: 0, behavior: "smooth" }); update(); };
     tr.onclick = pick;
     tr.onkeydown = e => { if (e.key === "Enter") pick(); };
     tb.appendChild(tr);
+    const n = tb.children.length - 1;
+    if (n < 25) enter(tr, n * 25, 4);
   }
   t.append(thead, tb);
   wrap.appendChild(t);
@@ -2149,18 +2347,36 @@ $("#rates-toggle").onclick = () => { S.ratesAll = !S.ratesAll; renderRates(); };
    ========================================================================= */
 const pops = [];
 function closePops() {
-  for (const p of pops) { p.panel.hidden = true; p.btn.setAttribute("aria-expanded", "false"); }
+  for (const p of pops) {
+    if (!p.open) continue;
+    p.open = false;
+    p.btn.setAttribute("aria-expanded", "false");
+    if (REDUCED.matches) { p.panel.hidden = true; continue; }
+    p.anim = p.panel.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateY(-4px) scale(.98)" }],
+                             { duration: 150, easing: "cubic-bezier(.4, 0, 1, 1)" });
+    p.anim.onfinish = () => { if (!p.open) p.panel.hidden = true; };
+  }
+}
+function openPop(p) {
+  if (p.anim) p.anim.cancel();
+  p.open = true;
+  p.panel.hidden = false;
+  p.btn.setAttribute("aria-expanded", "true");
+  if (!REDUCED.matches)
+    p.anim = p.panel.animate([{ opacity: 0, transform: "translateY(-6px) scale(.97)" }, { opacity: 1, transform: "none" }],
+                             { duration: 240, easing: EASE });
 }
 function popover(btn, panel, build) {
-  pops.push({ btn, panel });
+  const p = { btn, panel, open: false };
+  pops.push(p);
   btn.addEventListener("click", e => {
     e.stopPropagation();
-    const wasOpen = !panel.hidden;
+    const wasOpen = p.open;
     closePops();
     if (wasOpen || !S.data) return;
+    if (p.anim) p.anim.cancel();
     build(panel);
-    panel.hidden = false;
-    btn.setAttribute("aria-expanded", "true");
+    openPop(p);
     // Keep the panel on-screen.
     panel.style.left = "0px";
     const r = panel.getBoundingClientRect();
@@ -2185,7 +2401,7 @@ popover($("#range-btn"), $("#range-panel"), panel => {
     if (S.range.preset === p.id) c.innerHTML = CHECK;
     const bounds = rangeBounds({ preset: p.id });
     b.append(c, h("span", null, p.label), h("span", "hint", describeSpan(bounds.from, bounds.to)));
-    b.onclick = () => { S.range = { preset: p.id }; persist(); closePops(); render(); };
+    b.onclick = () => { S.range = { preset: p.id }; persist(); closePops(); update(); };
     panel.appendChild(b);
   }
   const foot = h("div", "foot");
@@ -2203,7 +2419,7 @@ popover($("#range-btn"), $("#range-panel"), panel => {
     let a = f.value, b = t.value;
     if (a > b) [a, b] = [b, a];
     S.range = { preset: "custom", from: a, to: b };
-    persist(); closePops(); render();
+    persist(); closePops(); update();
   };
   [f, t].forEach(x => x.addEventListener("keydown", e => { if (e.key === "Enter") go.click(); }));
   row.append(f, h("span", "muted", "→"), t, go);
@@ -2230,26 +2446,30 @@ function multiSelect(panel, { title, items, selected, onChange, searchable }) {
   }
   const list = h("div", "panel-list");
   panel.appendChild(list);
+  // Rows are built once and then updated in place, so the check marks can animate.
+  const rows = items.map(it => {
+    const row = h("label", "ms-row");
+    if (it.sub) row.title = it.sub;
+    const cb = h("input", "cbx"); cb.type = "checkbox";
+    cb.onchange = () => {
+      const sel = selected();
+      const cur = sel.size ? new Set(sel) : new Set(all);
+      if (cur.has(it.idx)) cur.delete(it.idx); else cur.add(it.idx);
+      onChange(cur.size === all.length || cur.size === 0 ? new Set() : cur);
+      draw();
+    };
+    const sw = h("i", "sw"); sw.style.background = it.color;
+    const only = h("button", "only", "only");
+    only.onclick = e => { e.preventDefault(); onChange(new Set([it.idx])); draw(); };
+    row.append(cb, sw, h("span", "name", it.name), h("span", "val", it.val), only);
+    list.appendChild(row);
+    return { it, row, cb };
+  });
   function draw() {
-    list.replaceChildren();
     const sel = selected();
-    for (const it of items) {
-      if (query && !(it.name + " " + (it.sub || "")).toLowerCase().includes(query)) continue;
-      const row = h("label", "ms-row");
-      if (it.sub) row.title = it.sub;
-      const cb = h("input"); cb.type = "checkbox";
+    for (const { it, row, cb } of rows) {
+      row.hidden = !!query && !(it.name + " " + (it.sub || "")).toLowerCase().includes(query);
       cb.checked = !sel.size || sel.has(it.idx);
-      cb.onchange = () => {
-        const cur = sel.size ? new Set(sel) : new Set(all);
-        if (cur.has(it.idx)) cur.delete(it.idx); else cur.add(it.idx);
-        onChange(cur.size === all.length || cur.size === 0 ? new Set() : cur);
-        draw();
-      };
-      const sw = h("i", "sw"); sw.style.background = it.color;
-      const only = h("button", "only", "only");
-      only.onclick = e => { e.preventDefault(); onChange(new Set([it.idx])); draw(); };
-      row.append(cb, sw, h("span", "name", it.name), h("span", "val", it.val), only);
-      list.appendChild(row);
     }
   }
   draw();
@@ -2261,7 +2481,7 @@ popover($("#models-btn"), $("#models-panel"), panel => {
     title: "Models · all-time spend",
     items: d.modelOrder.map(i => ({ idx: i, name: modelName(d.models[i]), sub: d.models[i], color: modelColor(i), val: fmtMoney(d.modelCost[i]) })),
     selected: () => S.models,
-    onChange: s => { S.models = s; render(); },
+    onChange: s => { S.models = s; update(); },
   });
 });
 popover($("#projects-btn"), $("#projects-panel"), panel => {
@@ -2270,7 +2490,7 @@ popover($("#projects-btn"), $("#projects-panel"), panel => {
     title: "Projects · all-time spend",
     items: d.projectOrder.map(i => ({ idx: i, name: d.projects[i].label, sub: d.projects[i].path, color: "var(--s1)", val: fmtMoney(d.projectCost[i]) })),
     selected: () => S.projects,
-    onChange: s => { S.projects = s; render(); },
+    onChange: s => { S.projects = s; update(); },
     searchable: d.projects.length > 8,
   });
 });
@@ -2432,7 +2652,7 @@ function getRates() {
 async function setCurrency(code) {
   if (code === "USD") {
     S.currency = "USD"; S.fx = { code: "USD", rate: 1, date: null, stale: false };
-    persist(); applyFx(); renderCurrencyButton(); render();
+    persist(); applyFx(); renderCurrencyButton(); update();
     return;
   }
   renderCurrencyButton(code);
@@ -2441,7 +2661,7 @@ async function setCurrency(code) {
     if (!r.rates[code] || !r.rates.USD) throw new Error(`the ECB doesn't publish a rate for ${code}`);
     S.currency = code;
     S.fx = { code, rate: r.rates[code] / r.rates.USD, date: r.date, stale: !!r.stale };
-    persist(); applyFx(); render();
+    persist(); applyFx(); update();
   } catch (e) {
     if (S.currency === code) { S.currency = S.fx.code; persist(); }   // don't retry it on every launch
     $("#banners").prepend(banner("warn", b => b.append(document.createTextNode(
@@ -2483,12 +2703,12 @@ popover($("#currency-btn"), $("#currency-panel"), panel => {
 
 $("#reset").onclick = () => {
   S.models = new Set(); S.projects = new Set(); S.session = null; S.range = { preset: "30d" }; S.gran = "auto";
-  persist(); render();
+  persist(); update();
 };
 let searchTimer;
 $("#sess-search").addEventListener("input", e => {
   clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => { S.sessQuery = e.target.value; S.sessLimit = 15; if (current) renderSessions(current.recs); }, 120);
+  searchTimer = setTimeout(() => { S.sessQuery = e.target.value; S.sessLimit = 15; if (current) update(() => renderSessions(current.recs)); }, 120);
 });
 
 /* =========================================================================
@@ -2547,13 +2767,21 @@ if (HOST) {
     document.documentElement.classList.toggle("inactive", !m.active);
     $("#wbtn-max").title = m.maximized ? "Restore down" : "Maximize";
   });
-  addEventListener("scroll", () => bar.classList.toggle("scrolled", scrollY > 4), { passive: true });
+  SCROLLER = $("#scroller");
+  SCROLLER.addEventListener("scroll", () => bar.classList.toggle("scrolled", SCROLLER.scrollTop > 4), { passive: true });
   win("hello");
 }
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if (S.theme === "system") applyTheme(); });
 $("#theme").onclick = () => {
   S.theme = { system: "light", light: "dark", dark: "system" }[S.theme];
+  const root = document.documentElement;
+  if (!REDUCED.matches) {
+    root.classList.add("theme-fade");
+    clearTimeout(root._fade);
+    root._fade = setTimeout(() => root.classList.remove("theme-fade"), 400);
+  }
   persist(); applyTheme();
+  if (!REDUCED.matches) $("#theme svg")?.animate([{ transform: "rotate(-90deg) scale(.6)", opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 400, easing: EASE });
 };
 applyTheme();
 
@@ -2679,8 +2907,9 @@ async function load() {
     $("#tb-sub").title = d.dir;
     $("#foot-meta").textContent = `${int.format(d.records.length)} API calls · ${d.files} log files · parsed in ${d.parseSeconds}s`;
     setStatus("ok", "Updated " + dfTimeS.format(new Date()));
+    const firstLoad = document.body.classList.contains("loading");
     endSkeleton();
-    render();
+    if (firstLoad) update(); else render();   // animate in once; quiet refreshes after that
     // A saved currency other than USD: get the rates once the numbers are on screen.
     if (!CURRENCIES.some(c => c.code === S.currency)) { S.currency = "USD"; persist(); }
     if (S.currency !== S.fx.code && !$("#currency-btn").classList.contains("busy")) setCurrency(S.currency);
